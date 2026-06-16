@@ -128,3 +128,20 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# ============================================================
+# MAI COMMITTARE — Istruzioni del Project Lead
+# ============================================================
+# .opencode/ contiene skill e configurazioni locali degli agenti
+# CODE_OF_CONDUCT.md è gestito separatamente da Brainverse_AI
+# ============================================================
+
+# Directory agenti/skill locali — MAI su git
+.opencode/
+
+# Codice di Condotto — gestito da Brainverse_AI OS
+CODE_OF_CONDUCT.md
+
+# File temporanei e piani di refactoring locali
+REFACTORING_PLAN.md
+*.local.*
