@@ -1,9 +1,10 @@
-const Area = require('./area');
 const { sequelize } = require('../config/database');
-const Sensor = require('../model/sensor');
-const Drone = require('../model/drone');
-const FireEvent = require('../model/fireEvent');
-const { Sequelize } = require('sequelize');
+const Area = require('./area');
+const Sensor = require('./sensor');
+const Drone = require('./drone');
+const FireEvent = require('./fireEvents');
+const User = require('./user');
+const WeatherData = require('./weatherData');
 
 // Associations Drone
 Drone.belongsToMany(Area, { through: 'AreaDrones' });
@@ -30,18 +31,12 @@ Area.hasMany(Sensor, { foreignKey: 'areaId' });
 Area.hasMany(Drone, { foreignKey: 'areaId' });
 Area.hasMany(FireEvent, { foreignKey: 'area_id' });
 
-// Export the models
+// Export models
 module.exports = {
   Area,
   FireEvent,
   Sensor,
   Drone,
+  User,
+  WeatherData,
 };
-
-/* In this code,It is important to remember that the relationships are incomplete at this time because there is no database configured at this time. I have established the relationships between different models in my application using Sequelize, an Object-Relational Mapping (ORM) library for Node.js. The models I've worked with are `Area`, `FireEvent`, `Sensor`, and `Drone`.
-Firstly, I defined the associations between the `Drone` and `Area` models. A Drone can belong to many Areas, and an Area can have many Drones. This is a many-to-many relationship, so I used the `belongsToMany` method and specified the join table `AreaDrones`.
-Additionally, a Drone can belong to a FireEvent and an Area. I used the `belongsTo` method to define these one-to-many relationships.
-Moving on to the `Sensor` model, I defined its associations with the `FireEvent` and `Area` models. A Sensor can belong to many Areas, and an Area can have many Sensors. This is also a many-to-many relationship, so I used the `belongsToMany` method and specified the join table `AreaSensors`. Furthermore, a Sensor can have many Drones and FireEvents, so I used the `hasMany` method to define these one-to-many relationships.
-For the `FireEvent` model, I defined its associations with the `Drone`, `Area`, and `Sensor` models. A FireEvent can have many Drones and Sensors, and it belongs to an Area. I used the `hasMany` and `belongsTo` methods to define these relationships.
-Finally, for the `Area` model, I defined its associations with the `Drone`, `Sensor`, and `FireEvent` models. An Area can have many Drones, Sensors, and FireEvents. I used the `hasMany` method to define these one-to-many relationships. Additionally, an Area can belong to many Drones and Sensors, which is a many-to-many relationship. I used the `belongsToMany` method and specified the join tables `AreaDrones` and `AreaSensors` to define these relationships.
-In summary, I have established the necessary relationships between the `Area`, `FireEvent`, `Sensor`, and `Drone` models using Sequelize. This allows me to easily query and manipulate data across these models based on their relationships. */
