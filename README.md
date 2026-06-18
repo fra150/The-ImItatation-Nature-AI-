@@ -129,12 +129,27 @@ The Imitatation Nature AI demo provides an insight into the system's operation, 
    GOOGLE_APPLICATION_CREDENTIALS=[path_to_google_credentials_file]
    ```
 
-### Execution:
+### Configuration & Execution:
 
 ```bash
+# 1. Copy the env template and fill in your values (at minimum DB_* and JWT_SECRET)
+cp .env.example .env
+
+# 2. Install dependencies
+npm install
+
+# 3. Run the automated test suite
+npm test
+
+# 4. Start the server (dev with auto-reload, or production)
 npm run dev
+# or
 npm start
 ```
+
+> **Note:** the server boots even without a reachable database (best-effort
+> connection) so that `/health` and the API surface stay available in dev.
+> Endpoints that hit the database will return errors until MySQL is configured.
 
 ### Limitations
 
@@ -143,7 +158,12 @@ The current demo has some limitations:
 - **Simulated data:** The data used in this demo is fictional and is solely intended to demonstrate the system's functionality. A real implementation would require integration with real data sources, such as IoT sensors, satellite images, and historical databases.
 - **Limited functionality:** Some features, such as complete integration with firefighter systems, are not implemented in the demo.
 - **Drone management:** Drone fleet management is currently simulated and would require integration with autonomous flight control systems.
-- **Lack of tests:** Currently, there are no automated tests for the code.
+- **Test suite:** A Jest + Supertest suite covers the core HTTP surface (health endpoint, routing, 404 handling, auth validation, logger). Run it with `npm test`. Coverage is still partial — the AI / Earth Engine paths are not yet tested.
+
+#### Current status (June 2026)
+
+- **Core REST API — wired & tested:** `/auth` (register/login/logout), `/sensors`, `/api/areas`, `/api/fire-events`, `/api/users`, plus `/health`.
+- **AI / Earth Engine endpoints — temporarily disabled (`501 Not Implemented`):** `/drones`, `/gemini`, forest (`/api/forestChange`, …) and `/api/weather`. They are gated off until their dependencies are resolved — notably a working `@tensorflow/tfjs-node` native build (it does not load on Node 22 in this environment), `@google-cloud/text-to-speech` and `chartjs-node-canvas` (not yet declared), and a route↔controller realignment.
 
 In the future, it is planned to integrate with real-time data, a fleet of drones for large-scale intervention, and a complete test suite.
 

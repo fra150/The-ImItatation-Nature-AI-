@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const fireEventController = require('../controllers/fireEventController');
-const validate = require('../middleware/validator');
+const { validate } = require('../middleware/validator');
 
 // Register FireEvent routes
 router.post(

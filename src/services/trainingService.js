@@ -1,10 +1,10 @@
-const tf = require('@tensorflow/tfjs-node');
 const path = require('path');
 const { sequelize } = require('../config/database');
 const config = require('../config/trainingConfig');
 const logger = require('../utils/logger');
 
 const loadModel = async () => {
+  const tf = require('@tensorflow/tfjs-node');
   try {
     const modelPath = path.join(__dirname, 'models', 'ai_model', 'model.json');
     const model = await tf.loadGraphModel(`file://${modelPath}`);
@@ -17,6 +17,7 @@ const loadModel = async () => {
 
 // Function to train the model
 const trainModel = async (trainingData, trainingLabels) => {
+  const tf = require('@tensorflow/tfjs-node');
   const model = tf.sequential();
   model.add(
     tf.layers.dense({ units: 128, activation: 'relu', inputShape: [trainingData.shape[1]] }),
@@ -43,12 +44,14 @@ const trainModel = async (trainingData, trainingLabels) => {
 
 // Function to generate random training data for example
 const generateTrainingData = () => {
+  const tf = require('@tensorflow/tfjs-node');
   const data = tf.randomNormal([1000, 10]); // 1000 samples with 10 features each
   const labels = tf.randomUniform([1000], 0, 2, 'int32'); // 1000 binary labels
   return { data, labels };
 };
 
 const loadTrainAndSaveModel = async () => {
+  const tf = require('@tensorflow/tfjs-node');
   try {
     // Load the model
     let model;

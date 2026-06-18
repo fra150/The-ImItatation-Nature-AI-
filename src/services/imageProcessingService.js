@@ -3,7 +3,7 @@ const { GenerativeModel } = require('@google/generative-ai');
 const tf = require('@tensorflow/tfjs-node'); // for image processing
 const logger = require('../utils/logger');
 const fs = require('fs'); // To load the processed image into memory
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 // Create an instance of the Gemini model
 const model = new GenerativeModel({

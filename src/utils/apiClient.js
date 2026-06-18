@@ -1,6 +1,6 @@
 const { createClient } = require('@google/maps');
 const util = require('util');
-const logger = require('winston');
+const winston = require('winston');
 
 // Winston logger configuration with logging levels
 const logger = winston.createLogger({

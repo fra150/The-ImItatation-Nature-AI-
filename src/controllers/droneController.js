@@ -1,11 +1,10 @@
 const Drone = require('../models/drone');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const FireIncident = require('../models/fireEvents');
 const WeatherService = require('../services/weatherService');
 const AIAnalysisService = require('../services/aiAnalysisService');
 const { analyzeData } = require('../services/geminiService');
 const logger = require('../utils/logger');
-const logger = require('../utils/validator');
 
 const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
 

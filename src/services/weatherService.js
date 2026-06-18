@@ -187,13 +187,11 @@ const applyScaleAndOffset = function (image) {
   return ee.Image(ee.Image(bands).copyProperties(image, image.propertyNames()));
 };
 
-// Collection and image IDs.
-const collection = 'NOAA/GOES/16/MCMIPC/'; // in this case we can keep the files of the NoAA-goes-16 configuration, but we can also change it with our mysql.
-const imageName = ''; // Here you add the image name
-const assetId = collection + imageName;
-const image = applyScaleAndOffset(assetId);
-Map.setCenter(); // here you insert the coordinates of the map to be displayed in a visualization environment, for example (-75, 37, 5)
-Map.addLayer(image, goesRgbViz); // here you insert
+// NOTA: qui c'era uno snippet demo che, al require, eseguiva
+// applyScaleAndOffset(assetId) e i globali Map.* del Code Editor EE
+// (inesistenti in Node), facendo crashare l'app all'avvio. Rimosso:
+// applyScaleAndOffset resta esportata e va invocata a runtime con una
+// sessione Earth Engine inizializzata.
 
 // Function to retrieve and display wind speed dataset data
 const getWindSpeedData = async () => {

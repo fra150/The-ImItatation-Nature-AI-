@@ -1,7 +1,6 @@
 const Sensor = require('../models/sensor');
 const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
-const logger = require('../utils/validator');
 const { trainSupervisedClassifier,} = require('../services/classificationService/supervisedClassification');
 const {trainUnsupervisedClusterer,} = require('../services/classificationService/unsupervisedClassification');
 const { createCompositeImage } = require('../services/classificationService/dataPreparation');

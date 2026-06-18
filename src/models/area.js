@@ -42,16 +42,9 @@ const Area = sequelize.define(
   },
 );
 
-// Define one-to-many relationship between Area and Sensor
-Area.hasMany(Sensor, { foreignKey: 'areaId' });
-
-// Define one-to-many relationship between Area and Drone
-Area.hasMany(Drone, { foreignKey: 'areaId' });
-
-// Define many-to-many relationship between Area and Sensor
-Area.belongsToMany(Sensor, { through: 'AreaSensors' });
-Area.belongsToMany(Drone, { through: 'AreaDrones' });
-
+// Le associazioni (Area↔Sensor, Area↔Drone) sono definite centralmente in
+// models/index.js, dove tutti i modelli sono importati insieme. Qui erano
+// duplicate e referenziavano Sensor/Drone non importati → crash al require.
 module.exports = Area;
 
 /* In this code, I have defined a model called "Area" using Sequelize, a powerful ORM (Object-Relational Mapping) for Node.js.

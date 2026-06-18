@@ -40,12 +40,6 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1); // Safely close the application
 });
 
-// Logger usage example
-logger.info('Informational log message');
-logger.warn('Warning! Something is not right.');
-logger.error('Error! Something went wrong.');
-logger.debug('Debug information'); // Will not be displayed in production
-
 const loggerMqtt = winston.createLogger({
   level: 'info', // Default log level
   format: winston.format.combine(
@@ -60,7 +54,13 @@ const loggerMqtt = winston.createLogger({
   ],
 });
 
-module.exports = { logger, loggerMqtt };
+// Export the winston instance AS the module itself, so the common
+// `const logger = require('../utils/logger')` style returns a working logger.
+// Also expose named handles (`.logger`, `.loggerMqtt`) so callers that
+// destructure (`const { logger } = require('../utils/logger')`) keep working.
+module.exports = logger;
+module.exports.logger = logger;
+module.exports.loggerMqtt = loggerMqtt;
 
 /* I'm In this script, I'm setting up a logging system for a Node.js application using the Winston library. Winston is a versatile logging library that allows for logging to various transports, such as consoles, files, databases, and more.
 Firstly, I'm importing the necessary modules: Winston itself, and a Winston plugin called 'winston-daily-rotate-file' which allows for log files to be rotated daily.

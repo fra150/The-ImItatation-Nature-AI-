@@ -1,6 +1,5 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../config/database');
-const WeatherService = require('../services/weatherService');
 
 class FireEvent extends Model {
   /**
@@ -77,8 +76,9 @@ FireEvent.init(
   },
 );
 
-// Defining the relationship with the sensor part.
-FireEvent.belongsTo(Sensor, { foreignKey: 'detected_by_sensor_id' });
+// Le associazioni tra modelli sono definite centralmente in models/index.js
+// (dove tutti i modelli sono importati insieme), per evitare riferimenti a
+// modelli non importati qui e definizioni duplicate.
 module.exports = FireEvent;
 
 /* In this code, I have created a data model to represent a fire event in a system. The model is defined using Sequelize, a powerful ORM (Object-Relational Mapping) for Node.js and JavaScript.

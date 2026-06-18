@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const { Sequelize } = require('sequelize');
 const { sequelize } = require('./config/database');
 const environment = require('./config/environment');
 const { logger } = require('./utils/logger');
@@ -28,7 +27,6 @@ const userRoutes = require('./routes/userRoutes');
 app.use(express.json());
 app.use(cors());
 app.use(require('./middleware/rateLimiter'));
-app.use(require('./middleware/errorHandler'));
 
 // ============================================================
 // Health endpoint per readiness probe (K8s / Brainverse_AI)
@@ -61,12 +59,15 @@ app.get('/', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/sensors', sensorRoutes);
 app.use('/drones', droneRoutes);
-app.use('/api/fire-events', fireEventRoutes);
-app.use('/api', forestRoutes);
 app.use('/gemini', geminiRoutes);
+app.use('/api/fire-events', fireEventRoutes);
 app.use('/api/weather', weatherDataRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/areas', areaRoutes);
+// forestRoutes è montato sul prefisso condiviso '/api' (catch-all 501 in
+// modalità no-AI): va registrato DOPO le route '/api/...' più specifiche,
+// altrimenti le oscurerebbe tutte.
+app.use('/api', forestRoutes);
 
 // ============================================================
 // 404 Handler
@@ -76,49 +77,65 @@ app.use((_req, res) => {
 });
 
 // ============================================================
-// ML Training asincrono (non blocca l'avvio)
+// Error handler — DEVE essere registrato DOPO le route.
+// Express riconosce i gestori di errore dalla firma a 4 argomenti
+// (err, req, res, next): se registrato prima delle route, gli errori
+// lanciati dai controller non lo raggiungerebbero mai.
 // ============================================================
-loadTrainAndSaveModel()
-  .then(() => logger.info('Model training completed'))
-  .catch((error) => logger.error('Error during model training:', error));
+app.use(require('./middleware/errorHandler'));
 
 // ============================================================
-// MQTT Client — integrato solo se configurato
+// Servizi in background (ML training + MQTT) — avviati solo quando
+// il server parte davvero, non al semplice require() del modulo,
+// così i test possono importare l'app senza effetti collaterali.
 // ============================================================
-if (process.env.MQTT_BROKER_URL) {
-  try {
-    const { client, subscribeToTopic, publishMessage } = require('./utils/mqttClient');
-    app.locals.mqttClient = client;
-    app.locals.mqttSubscribe = subscribeToTopic;
-    app.locals.mqttPublish = publishMessage;
-    logger.info('MQTT client initialized and attached to app.locals');
-  } catch (mqttError) {
-    logger.warn('MQTT client not available (non-blocking):', mqttError.message);
+function initBackgroundServices() {
+  loadTrainAndSaveModel()
+    .then(() => logger.info('Model training completed'))
+    .catch((error) => logger.error(`Error during model training: ${error.message}`));
+
+  if (process.env.MQTT_BROKER_URL) {
+    try {
+      const { client, subscribeToTopic, publishMessage } = require('./utils/mqttClient');
+      app.locals.mqttClient = client;
+      app.locals.mqttSubscribe = subscribeToTopic;
+      app.locals.mqttPublish = publishMessage;
+      logger.info('MQTT client initialized and attached to app.locals');
+    } catch (mqttError) {
+      logger.warn(`MQTT client not available (non-blocking): ${mqttError.message}`);
+    }
+  } else {
+    logger.info('MQTT broker not configured — skipping MQTT integration');
   }
-} else {
-  logger.info('MQTT broker not configured — skipping MQTT integration');
 }
 
 // ============================================================
-// Database sync + Server start
+// Avvio del server. La connessione al DB è "best effort": se il
+// database non è raggiungibile, il server parte comunque per
+// esporre /health e la superficie API (utile in demo/dev).
 // ============================================================
 async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info('Database connection established successfully.');
-
     await sequelize.sync({ alter: true });
     logger.info('Database synchronized successfully.');
-
-    app.listen(port, () => {
-      logger.info(`Server is listening on port ${port}`);
-    });
   } catch (error) {
-    logger.error('Error during database sync or server startup:', error);
-    process.exit(1);
+    logger.error(`Database unavailable — continuing without DB: ${error.message}`);
   }
+
+  initBackgroundServices();
+
+  return app.listen(port, () => {
+    logger.info(`Server is listening on port ${port}`);
+  });
 }
 
-startServer();
+// Avvia il server solo se il file è eseguito direttamente
+// (node src/app.js), non quando viene importato (es. dai test).
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;
+module.exports.startServer = startServer;

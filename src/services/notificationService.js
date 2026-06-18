@@ -5,15 +5,19 @@ const logger = require('../utils/logger');
 const { startChatSession } = require('./geminiService');
 const validator = require('validator');
 
-// MQTT client configuration
-const mqttClient = mqtt.connect(process.env.MQTT_BROKER_URL);
-mqttClient.on('connect', () => {
-  logger.info('Connected to MQTT broker');
-});
+// MQTT client — creato SOLO se il broker è configurato. Senza guardia,
+// mqtt.connect(undefined) si collega a localhost:1883 e ritenta all'infinito
+// (loop di ECONNREFUSED) anche quando MQTT non è in uso.
+const mqttClient = process.env.MQTT_BROKER_URL
+  ? mqtt.connect(process.env.MQTT_BROKER_URL)
+  : null;
 
-mqttClient.on('error', (error) => {
-  logger.error('MQTT connection error:', error);
-});
+if (mqttClient) {
+  mqttClient.on('connect', () => logger.info('Connected to MQTT broker'));
+  mqttClient.on('error', (error) => logger.error(`MQTT connection error: ${error.message}`));
+} else {
+  logger.info('MQTT_BROKER_URL not set — notificationService MQTT client disabled');
+}
 
 // Nodemailer transporter configuration for sending emails
 const transporter = nodemailer.createTransport({
