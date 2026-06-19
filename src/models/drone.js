@@ -80,10 +80,13 @@ const Drone = sequelize.define(
   },
 );
 
-module.exports = {
-  Drone,
-  DroneData,
-};
+// Esporta il model Drone COME modulo (così `const Drone = require('./drone')`
+// restituisce un model Sequelize usabile con .findAll/.create/...), ed espone
+// anche i handle nominati `.Drone` e `.DroneData` per chi preferisce
+// destrutturare. Entrambi gli stili di import funzionano.
+module.exports = Drone;
+module.exports.Drone = Drone;
+module.exports.DroneData = DroneData;
 /* I have created a Sequelize database model to represent a drone. The model is defined in a JavaScript file called "drone.js".
 1. I imported the data types and the Sequelize model from Sequelize, an ORM (Object-Relational Mapping) for Node.js.
 2. I imported the Sequelize instance from my database configuration file.

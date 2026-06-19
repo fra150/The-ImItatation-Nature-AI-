@@ -43,9 +43,10 @@ const assignDroneToFire = async (drone, fire) => {
   await drone.save();
   fire.assignedDrone = drone.id;
   await fire.save();
-  // Plan the path for the drone
-  const path = await PathfindingService.calculatePath(drone.location, fire.location);
-  // Send the path to the drone (this part will depend on the specific hardware of the drone)
+  // NOTA: la pianificazione del percorso (PathfindingService) e l'invio del
+  // comando al drone via hardware non sono ancora implementati. L'assegnazione
+  // drone↔fuoco a DB è completa; qui andrà il canale di comando reale.
+  logger.info(`Drone ${drone.id} assigned to fire ${fire.id}`);
 };
 
 // Handles the upload and optimization of drone images

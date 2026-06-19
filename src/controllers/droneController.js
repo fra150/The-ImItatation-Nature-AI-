@@ -7,26 +7,46 @@ const { analyzeData } = require('../services/geminiService');
 const logger = require('../utils/logger');
 
 const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
+const { check, validationResult } = require('express-validator');
 
+// Cervello "Bot Padre": legge i dati dei droni, li analizza con l'AI (Gemini)
+// e rimanda indietro le indicazioni ai droni. L'analisi AI degrada con grazia
+// se Gemini non è configurato (GEMINI_API_KEY assente).
 const analyzeDroneData = async (req, res) => {
   try {
-    // Drone data is extracted from the database
-    const droneData = await DroneData.findAll();
+    const droneData = await Drone.findAll();
     if (!droneData || droneData.length === 0) {
       return res.status(404).json({ error: 'No drone data found' });
     }
 
-    // The data is analyzed using AI
-    const analysisResult = await analyzeData(droneData);
+    // Analisi AI (graceful): senza chiave Gemini restituiamo un 503 chiaro.
+    let analysisResult;
+    try {
+      analysisResult = await analyzeData(droneData);
+    } catch (aiError) {
+      logger.warn(`Drone AI analysis unavailable: ${aiError.message}`);
+      return res.status(503).json({
+        error: 'AI analysis unavailable',
+        detail: 'Gemini not configured or unreachable (set GEMINI_API_KEY).',
+      });
+    }
 
-    // The analyzed data is sent to the drones
-    const sendResult = await sendToDrone(analysisResult);
+    // Dispatch verso i droni (simulato: il canale hardware reale non è ancora
+    // implementato — vedi visione "Bot Padre controlla i droni").
+    const sendResult = dispatchToDrones(analysisResult, droneData);
 
     res.status(200).json({ analysis: analysisResult, sendStatus: sendResult });
   } catch (error) {
-    console.error('Error during drone data analysis:', error);
+    logger.error(`Error during drone data analysis: ${error.message}`);
     res.status(500).json({ error: 'Error during drone data analysis' });
   }
+};
+
+// Invio (simulato) delle indicazioni ai droni. Sostituire con il canale di
+// comunicazione reale (MQTT / API drone) quando disponibile.
+const dispatchToDrones = (analysis, drones) => {
+  logger.info(`Dispatching analysis to ${drones.length} drone(s)`);
+  return { dispatched: drones.length, simulated: true };
 };
 
 // Add a new drone
@@ -91,12 +111,24 @@ const updateDroneStatus = async (req, res, next) => {
     drone.batteryLevel = batteryLevel;
     drone.lastSensorData = sensorData;
     await drone.save();
-    // Analyze sensor data with AI
-    const aiAnalysis = await AIAnalysisService.analyzeSensorData(sensorData);
-    // Send notifications if necessary
-    if (batteryLevel < 20) {
-      // Send low battery notification
+
+    // Analisi AI dei dati sensore (opzionale/graceful): il metodo dedicato non
+    // è ancora implementato in aiAnalysisService, quindi degrada a null senza
+    // far fallire l'aggiornamento di stato del drone.
+    let aiAnalysis = null;
+    if (typeof AIAnalysisService.analyzeSensorData === 'function') {
+      try {
+        aiAnalysis = await AIAnalysisService.analyzeSensorData(sensorData);
+      } catch (aiError) {
+        logger.warn(`Sensor AI analysis failed: ${aiError.message}`);
+      }
     }
+
+    // Notifica batteria bassa (placeholder per il canale di notifica reale)
+    if (typeof batteryLevel === 'number' && batteryLevel < 20) {
+      logger.warn(`Drone ${id} battery low: ${batteryLevel}%`);
+    }
+
     res.json({ drone, aiAnalysis });
   } catch (error) {
     next(error);
@@ -118,8 +150,17 @@ const getRealtimeData = async (req, res, next) => {
       videoFeed: `https://drone-video-feed.com/${droneId}`, // this site should be the front-end part for firefighters the site is just an example.
       sensorData: drone.lastSensorData,
     };
-    // Get weather data for the drone's location
-    const weatherData = await WeatherService.getWeatherData(drone.location);
+    // Dati meteo per la posizione del drone (opzionale/graceful): la funzione
+    // dedicata non è esposta dal WeatherService, quindi se non disponibile
+    // restituiamo i dati realtime senza meteo invece di far fallire la richiesta.
+    let weatherData = null;
+    if (typeof WeatherService.getWeatherData === 'function') {
+      try {
+        weatherData = await WeatherService.getWeatherData(drone.location);
+      } catch (wErr) {
+        logger.warn(`Weather lookup failed: ${wErr.message}`);
+      }
+    }
     res.json({ realtimeData, weatherData });
   } catch (error) {
     next(error);
