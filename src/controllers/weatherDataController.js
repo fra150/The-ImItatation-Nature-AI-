@@ -1,5 +1,7 @@
 // Import the necessary services
 const weatherService = require('../services/weatherService');
+const logger = require('../utils/logger');
+const { WeatherData } = require('../models/weatherData');
 const {trainSupervisedClassifier,} = require('../services/classificationService/supervisedClassification');
 const {trainUnsupervisedClusterer,} = require('../services/classificationService/unsupervisedClassification');
 const { createCompositeImage } = require('../services/classificationService/dataPreparation');
@@ -78,8 +80,74 @@ const getWindSpeedData = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// CRUD su WeatherData (DB-backed, NON richiede Earth Engine). Questa è la
+// superficie "core" di /api/weather: salva e legge osservazioni meteo nel DB.
+// Gli endpoint Earth Engine (ERA5/GOES/classify/cluster) restano differiti
+// perché dipendono da una sessione EE e da globali del Code Editor (Map.*).
+// ---------------------------------------------------------------------------
+const createWeatherData = async (req, res) => {
+  try {
+    const created = await WeatherData.create(req.body);
+    res.status(201).json(created);
+  } catch (error) {
+    logger.error(`Error creating weather data: ${error.message}`);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const getAllWeatherData = async (_req, res) => {
+  try {
+    const rows = await WeatherData.findAll();
+    res.json(rows);
+  } catch (error) {
+    logger.error(`Error fetching weather data: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch weather data' });
+  }
+};
+
+const getWeatherDataById = async (req, res) => {
+  try {
+    const row = await WeatherData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Weather data not found' });
+    res.json(row);
+  } catch (error) {
+    logger.error(`Error fetching weather data: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch weather data' });
+  }
+};
+
+const updateWeatherData = async (req, res) => {
+  try {
+    const row = await WeatherData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Weather data not found' });
+    await row.update(req.body);
+    res.json(row);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const deleteWeatherData = async (req, res) => {
+  try {
+    const row = await WeatherData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Weather data not found' });
+    await row.destroy();
+    res.json({ message: 'Weather data deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete weather data' });
+  }
+};
+
 // Exporting the controllers for use in other modules
 module.exports = {
+  // DB-backed CRUD (core, nessuna dipendenza Earth Engine)
+  createWeatherData,
+  getAllWeatherData,
+  getWeatherDataById,
+  updateWeatherData,
+  deleteWeatherData,
+  // Earth Engine (differiti: richiedono sessione EE)
   getWeatherData,
   visualizeWeatherData,
   getWeatherDataGoes,
