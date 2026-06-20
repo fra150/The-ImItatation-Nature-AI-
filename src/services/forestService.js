@@ -1,6 +1,5 @@
 const ee = require('@google/earthengine');
 const forestModel = require('../models/forestModel');
-const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
 const initializeEarthEngine = async () => {
   return new Promise((resolve, reject) => {
@@ -98,6 +97,9 @@ const generateChartData = async () => {
 
 // Function to create a chart
 const createChart = async (data) => {
+  // chartjs-node-canvas è opzionale (richiede il canvas nativo): caricata in
+  // modo lazy così forestService resta importabile anche quando non è installata.
+  const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
   const width = 800;
   const height = 600;
   const chartCallback = (ChartJS) => {

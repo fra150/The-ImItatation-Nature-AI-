@@ -1,4 +1,6 @@
 const forestService = require('../services/forestService');
+const ForestData = require('../models/forestModel');
+const logger = require('../utils/logger');
 const { trainSupervisedClassifier,} = require('../services/classificationService/supervisedClassification');
 const {trainUnsupervisedClusterer,} = require('../services/classificationService/unsupervisedClassification');
 const { createCompositeImage } = require('../services/classificationService/dataPreparation');
@@ -50,11 +52,65 @@ const insertForestData = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// CRUD su ForestData (DB-backed, NON richiede Earth Engine). Superficie "core"
+// di /api/data: salva e consulta i record di forest-change nel DB. Gli endpoint
+// Earth Engine (getForestChangeData, classify/cluster, chart) restano differiti.
+// ---------------------------------------------------------------------------
+const getAllForestData = async (_req, res) => {
+  try {
+    const rows = await ForestData.findAll();
+    res.json(rows);
+  } catch (error) {
+    logger.error(`Error fetching forest data: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch forest data' });
+  }
+};
+
+const getForestDataById = async (req, res) => {
+  try {
+    const row = await ForestData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Forest data not found' });
+    res.json(row);
+  } catch (error) {
+    logger.error(`Error fetching forest data: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch forest data' });
+  }
+};
+
+const updateForestData = async (req, res) => {
+  try {
+    const row = await ForestData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Forest data not found' });
+    await row.update(req.body);
+    res.json(row);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const deleteForestData = async (req, res) => {
+  try {
+    const row = await ForestData.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Forest data not found' });
+    await row.destroy();
+    res.json({ message: 'Forest data deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete forest data' });
+  }
+};
+
 module.exports = {
+  // DB-backed CRUD (core, nessuna dipendenza Earth Engine)
+  insertForestData,
+  getAllForestData,
+  getForestDataById,
+  updateForestData,
+  deleteForestData,
+  // Earth Engine (differiti: richiedono sessione EE)
   getForestData,
   clusterForestService,
   classifyForestService,
-  insertForestData,
 };
 
 /* First it is worth remembering this: that if you want to use these functions in Earth engineer you have to modify them in var , moreover these are just a detailed example following the google guidelines for the 'ee' library for the code to work. 
