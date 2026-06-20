@@ -162,8 +162,8 @@ The current demo has some limitations:
 
 #### Current status (June 2026)
 
-- **Core REST API — wired & tested:** `/auth` (register/login/logout), `/sensors`, `/api/areas`, `/api/fire-events`, `/api/users`, plus `/health`.
-- **AI / Earth Engine endpoints — temporarily disabled (`501 Not Implemented`):** `/drones`, `/gemini`, forest (`/api/forestChange`, …) and `/api/weather`. They are gated off until their dependencies are resolved — notably a working `@tensorflow/tfjs-node` native build (it does not load on Node 22 in this environment), `@google-cloud/text-to-speech` and `chartjs-node-canvas` (not yet declared), and a route↔controller realignment.
+- **REST API — wired & tested (20 Jest tests):** `/auth` (register/login/logout), `/sensors`, `/api/areas`, `/api/fire-events`, `/api/users`, `/health`, `/drones` (registry, assignment, telemetry, agent release), `/api/weather` and `/api/data` (DB-backed weather / forest-data CRUD), and `/gemini` (real GoogleGenerativeAI — returns `503` until `GEMINI_API_KEY` is set). The AI/weather parts of the active endpoints degrade gracefully when their keys/services are absent.
+- **Deferred — Earth Engine / native ML (return `501`):** the satellite-imagery endpoints (`/api/forestChange`, ERA5/GOES weather imagery, supervised/unsupervised classification) and the ML-training path. These need a live Earth Engine session, the optional `chartjs-node-canvas` / `@google-cloud/text-to-speech` packages, and a working `@tensorflow/tfjs-node` native build (it does not load on Node 22 in this environment).
 
 In the future, it is planned to integrate with real-time data, a fleet of drones for large-scale intervention, and a complete test suite.
 
