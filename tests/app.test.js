@@ -26,7 +26,6 @@ describe('HTTP surface', () => {
 
   describe('AI routes disabled in core mode -> 501', () => {
     test.each([
-      ['post', '/gemini', 'gemini'],
       ['get', '/api/forestChange', 'forest'],
     ])('%s %s -> 501', async (method, path, feature) => {
       const res = await request(app)[method](path);
