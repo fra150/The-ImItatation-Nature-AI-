@@ -81,6 +81,13 @@ web_modules/
 .env.production.local
 .env.local
 
+# Secrets / service-account keys — MAI committare (repo pubblico)
+secrets/
+*-key.json
+*service-account*.json
+*-credentials.json
+gcp-*.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
