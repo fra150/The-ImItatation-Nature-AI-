@@ -157,6 +157,22 @@ const getEra5Thumbnail = async (req, res) => {
   }
 };
 
+// Endpoint Earth Engine REALE: thumbnail della velocità del vento (NOAA/NWS RTMA).
+const getWindThumbnail = async (req, res) => {
+  try {
+    const data = await weatherService.getWindSpeedThumbnail(
+      req.query.startDate,
+      req.query.endDate,
+      req.query.bbox ? req.query.bbox.split(',').map(Number) : undefined,
+    );
+    res.json(data);
+  } catch (error) {
+    const code = /not configured/i.test(error.message) ? 503 : 500;
+    logger.error(`Error fetching wind thumbnail: ${error.message}`);
+    res.status(code).json({ error: 'Weather Earth Engine error', detail: error.message });
+  }
+};
+
 // Exporting the controllers for use in other modules
 module.exports = {
   // DB-backed CRUD (core, nessuna dipendenza Earth Engine)
@@ -165,8 +181,10 @@ module.exports = {
   getWeatherDataById,
   updateWeatherData,
   deleteWeatherData,
-  // Earth Engine
-  getEra5Thumbnail, // reale (thumbnail temperatura ERA5)
+  // Earth Engine (reali)
+  getEra5Thumbnail, // temperatura ERA5
+  getWindThumbnail, // velocità vento RTMA
+  // Earth Engine (ancora da cablare/sistemare)
   getWeatherData,
   visualizeWeatherData,
   getWeatherDataGoes,

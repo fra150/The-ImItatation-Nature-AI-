@@ -19,4 +19,9 @@ describe('weather data routes (DB-backed CRUD)', () => {
     const res = await request(app).get('/api/weather/era5');
     expect(res.status).toBe(503);
   });
+
+  test('GET /api/weather/wind (Earth Engine) -> 503 when EE disabled in tests', async () => {
+    const res = await request(app).get('/api/weather/wind');
+    expect(res.status).toBe(503);
+  });
 });

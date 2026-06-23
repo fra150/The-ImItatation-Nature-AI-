@@ -242,10 +242,36 @@ const getEra5TemperatureThumbnail = async (
   };
 };
 
+// Thumbnail REALE della velocità del vento da NOAA/NWS RTMA (Earth Engine).
+// Il vento è un driver chiave della propagazione degli incendi. Dataset CONUS
+// (USA): default bbox sugli Stati Uniti. Richiede EE configurato.
+const getWindSpeedThumbnail = async (
+  startDate = '2024-03-01',
+  endDate = '2024-03-02',
+  bbox = [-125, 25, -66, 50],
+) => {
+  await initializeEarthEngine();
+  const windSpeed = ee
+    .ImageCollection('NOAA/NWS/RTMA')
+    .filter(ee.Filter.date(startDate, endDate))
+    .select('WIND')
+    .mean();
+  const palette = ['001137', '01abab', 'e7eb05', '620500'];
+  const thumbnailUrl = await new Promise((resolve, reject) => {
+    windSpeed.getThumbURL(
+      { min: 0, max: 12, palette, dimensions: 512, region: ee.Geometry.Rectangle(bbox) },
+      (url, err) =>
+        err ? reject(new Error(typeof err === 'string' ? err : JSON.stringify(err))) : resolve(url),
+    );
+  });
+  return { dataset: 'NOAA/NWS/RTMA', band: 'WIND', startDate, endDate, bbox, thumbnailUrl };
+};
+
 // Export the functions for use in other modules
 module.exports = {
   getERA5Data,
   getEra5TemperatureThumbnail,
+  getWindSpeedThumbnail,
   visualizeDataOnMap,
   applyScaleAndOffset,
   getWindSpeedData,

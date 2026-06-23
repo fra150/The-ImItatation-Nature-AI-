@@ -20,8 +20,9 @@ router.post(
 );
 
 router.get('/', weatherDataController.getAllWeatherData);
-// Endpoint Earth Engine reale (thumbnail temperatura ERA5) — PRIMA di /:id
+// Endpoint Earth Engine reali (thumbnail) — PRIMA di /:id
 router.get('/era5', weatherDataController.getEra5Thumbnail);
+router.get('/wind', weatherDataController.getWindThumbnail);
 router.get('/:id', weatherDataController.getWeatherDataById);
 router.put('/:id', weatherDataController.updateWeatherData);
 router.delete('/:id', weatherDataController.deleteWeatherData);
