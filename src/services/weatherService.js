@@ -207,9 +207,45 @@ const getWindSpeedData = async () => {
   return dataset;
 };
 
-// Export the functions for use in other modules by creating a table =
+// Thumbnail REALE della temperatura media a 2m da ERA5 (Earth Engine).
+// Restituisce un URL immagine; richiede EE configurato (altrimenti 503 a monte).
+// Default: luglio 2020 (dato storico sicuramente disponibile), bbox Europa.
+const getEra5TemperatureThumbnail = async (
+  startDate = '2020-07-01',
+  endDate = '2020-07-31',
+  bbox = [-10, 35, 30, 60],
+) => {
+  await initializeEarthEngine();
+  const meanImg = ee
+    .ImageCollection('ECMWF/ERA5/DAILY')
+    .select('mean_2m_air_temperature')
+    .filter(ee.Filter.date(startDate, endDate))
+    .mean();
+  const palette = [
+    '000080', '0000d9', '4000ff', '8000ff', '0080ff', '00ffff', '00ff80', '80ff00',
+    'daff00', 'ffff00', 'fff500', 'ffda00', 'ffb000', 'ffa400', 'ff4f00', 'ff2500', 'ff0a00',
+  ];
+  const thumbnailUrl = await new Promise((resolve, reject) => {
+    meanImg.getThumbURL(
+      { min: 250, max: 320, palette, dimensions: 512, region: ee.Geometry.Rectangle(bbox) },
+      (url, err) =>
+        err ? reject(new Error(typeof err === 'string' ? err : JSON.stringify(err))) : resolve(url),
+    );
+  });
+  return {
+    dataset: 'ECMWF/ERA5/DAILY',
+    band: 'mean_2m_air_temperature',
+    startDate,
+    endDate,
+    bbox,
+    thumbnailUrl,
+  };
+};
+
+// Export the functions for use in other modules
 module.exports = {
   getERA5Data,
+  getEra5TemperatureThumbnail,
   visualizeDataOnMap,
   applyScaleAndOffset,
   getWindSpeedData,

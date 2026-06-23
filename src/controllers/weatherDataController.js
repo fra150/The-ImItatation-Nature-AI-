@@ -139,6 +139,24 @@ const deleteWeatherData = async (req, res) => {
   }
 };
 
+// Endpoint Earth Engine REALE: thumbnail della temperatura media ERA5.
+// Degrada a 503 se EE non è configurato. Query opzionali: startDate, endDate,
+// bbox (es. ?bbox=-10,35,30,60).
+const getEra5Thumbnail = async (req, res) => {
+  try {
+    const data = await weatherService.getEra5TemperatureThumbnail(
+      req.query.startDate,
+      req.query.endDate,
+      req.query.bbox ? req.query.bbox.split(',').map(Number) : undefined,
+    );
+    res.json(data);
+  } catch (error) {
+    const code = /not configured/i.test(error.message) ? 503 : 500;
+    logger.error(`Error fetching ERA5 thumbnail: ${error.message}`);
+    res.status(code).json({ error: 'Weather Earth Engine error', detail: error.message });
+  }
+};
+
 // Exporting the controllers for use in other modules
 module.exports = {
   // DB-backed CRUD (core, nessuna dipendenza Earth Engine)
@@ -147,7 +165,8 @@ module.exports = {
   getWeatherDataById,
   updateWeatherData,
   deleteWeatherData,
-  // Earth Engine (differiti: richiedono sessione EE)
+  // Earth Engine
+  getEra5Thumbnail, // reale (thumbnail temperatura ERA5)
   getWeatherData,
   visualizeWeatherData,
   getWeatherDataGoes,
