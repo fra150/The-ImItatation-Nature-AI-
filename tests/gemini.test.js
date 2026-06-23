@@ -11,8 +11,8 @@ describe('gemini route (re-enabled, graceful)', () => {
     expect(res.status).not.toBe(501);
   });
 
-  test('POST /gemini degrades without hitting the network (503 or 400)', async () => {
+  test('POST /gemini without token -> 401 (mutations require auth)', async () => {
     const res = await request(app).post('/gemini').send({});
-    expect([400, 503]).toContain(res.status);
+    expect(res.status).toBe(401);
   });
 });

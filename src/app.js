@@ -55,20 +55,26 @@ app.get('/', (_req, res) => {
 });
 
 // ============================================================
-// Routes API
+// Routes API — autenticazione JWT (API "SaaS-ready")
+// /auth è pubblico (register/login/logout). Sulle altre route le operazioni di
+// SCRITTURA (POST/PUT/PATCH/DELETE) richiedono un JWT valido; le letture (GET)
+// restano pubbliche. /api/users è protetto su TUTTI i metodi (lista sensibile).
 // ============================================================
+const auth = require('./middleware/auth');
+const protectMutations = (req, res, next) =>
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ? auth(req, res, next) : next();
+
 app.use('/auth', authRoutes);
-app.use('/sensors', sensorRoutes);
-app.use('/drones', droneRoutes);
-app.use('/gemini', geminiRoutes);
-app.use('/api/fire-events', fireEventRoutes);
-app.use('/api/weather', weatherDataRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/areas', areaRoutes);
-// forestRoutes è montato sul prefisso condiviso '/api' (catch-all 501 in
-// modalità no-AI): va registrato DOPO le route '/api/...' più specifiche,
-// altrimenti le oscurerebbe tutte.
-app.use('/api', forestRoutes);
+app.use('/sensors', protectMutations, sensorRoutes);
+app.use('/drones', protectMutations, droneRoutes);
+app.use('/gemini', protectMutations, geminiRoutes);
+app.use('/api/fire-events', protectMutations, fireEventRoutes);
+app.use('/api/weather', protectMutations, weatherDataRoutes);
+app.use('/api/users', auth, userRoutes); // lista utenti sensibile -> auth su tutto
+app.use('/api/areas', protectMutations, areaRoutes);
+// forestRoutes è montato sul prefisso condiviso '/api': va registrato DOPO le
+// route '/api/...' più specifiche, altrimenti le oscurerebbe.
+app.use('/api', protectMutations, forestRoutes);
 
 // ============================================================
 // 404 Handler

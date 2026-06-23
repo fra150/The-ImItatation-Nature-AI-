@@ -6,11 +6,9 @@ const app = require('../src/app');
 // Hansen); sotto test EE è disattivato, quindi degrada a 503 (niente rete).
 // Il chart (/api/chart/forestChange) resta differito -> 501.
 describe('forest routes', () => {
-  test('POST /api/data with empty body -> 400 validation errors', async () => {
+  test('POST /api/data without token -> 401 (mutations require auth)', async () => {
     const res = await request(app).post('/api/data').send({});
-    expect(res.status).toBe(400);
-    expect(Array.isArray(res.body.errors)).toBe(true);
-    expect(res.body.errors.length).toBeGreaterThan(0);
+    expect(res.status).toBe(401);
   });
 
   test('POST /api/data is not a 501 stub', async () => {
