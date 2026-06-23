@@ -3,22 +3,12 @@
 
 const ee = require('@google/earthengine'); // Library for interfacing with Google Earth Engine
 const moment = require('moment'); // Library for manipulating dates //aggiungere moment
+const { initEarthEngine } = require('./earthEngine');
 
+// Inizializza Earth Engine via service account (vedi services/earthEngine.js).
+// Sostituisce ee.Authenticate()/ee.Initialize() non più validi in 0.1.x.
 async function initializeEarthEngine() {
-  // Autenticazione (se necessario)
-  ee.Authenticate();
-
-  return new Promise((resolve, reject) => {
-    ee.Initialize((error) => {
-      if (error) {
-        console.error('Errore nel inizializazione di Google Earth Engine:', error);
-        reject(error);
-      } else {
-        console.log('Google Earth Engine inizializzato correttamente.');
-        resolve();
-      }
-    });
-  });
+  return initEarthEngine();
 }
 
 // Function to get climate data from ERA5 - note that the data is all an example and should be modified based on ne

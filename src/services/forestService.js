@@ -1,20 +1,11 @@
 const ee = require('@google/earthengine');
 const forestModel = require('../models/forestModel');
+const { initEarthEngine } = require('./earthEngine');
 
-const initializeEarthEngine = async () => {
-  return new Promise((resolve, reject) => {
-    ee.Authenticate();
-    ee.Initialize((error) => {
-      if (error) {
-        console.error('Error initializing Google Earth Engine:', error);
-        reject(error);
-      } else {
-        console.log('Google Earth Engine initialized successfully.');
-        resolve();
-      }
-    });
-  });
-};
+// Inizializza Earth Engine via service account (vedi services/earthEngine.js).
+// Il vecchio ee.Authenticate()/ee.Initialize() non funziona più in
+// @google/earthengine 0.1.x (ee.Authenticate è undefined: serve il service account).
+const initializeEarthEngine = () => initEarthEngine();
 
 // Function to get forest change data
 const getForestChangeData = async () => {
