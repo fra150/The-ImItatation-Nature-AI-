@@ -17,6 +17,8 @@ function keyPath() {
 }
 
 function loadKey() {
+  // Sotto test EE è disattivato (niente chiamate di rete): gli endpoint -> 503.
+  if (process.env.NODE_ENV === 'test') return null;
   const p = keyPath();
   if (!p) return null;
   const abs = path.isAbsolute(p) ? p : path.join(process.cwd(), p);
@@ -67,6 +69,8 @@ function initEarthEngine() {
             _initPromise = null;
             reject(new Error(`Earth Engine initialize failed: ${err}`));
           },
+          null,
+          process.env.EE_PROJECT || null,
         ),
       (err) => {
         _initPromise = null;

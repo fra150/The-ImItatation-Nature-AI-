@@ -7,53 +7,30 @@ const { initEarthEngine } = require('./earthEngine');
 // @google/earthengine 0.1.x (ee.Authenticate è undefined: serve il service account).
 const initializeEarthEngine = () => initEarthEngine();
 
-// Function to get forest change data
-const getForestChangeData = async () => {
-  try {
-    await initializeEarthEngine();
-    const collection = forestModel.getForestChangeCollection();
-    const visParams = {
-      bands: [
-        'treecover2000',
-        'loss',
-        'gain',
-        'lossyear',
-        'first_b30',
-        'first_b40',
-        'first_b50',
-        'first_b70',
-        'last_b30',
-        'last_b40',
-        'last_b50',
-        'last_b70',
-        'datamask',
-      ],
-      min: 0,
-      max: 255,
-      palette: [
-        'blue',
-        'green',
-        'red',
-        'yellow',
-        'purple',
-        'orange',
-        'brown',
-        'pink',
-        'gray',
-        'black',
-      ],
-    };
+// Dataset Hansen Global Forest Change (UMD). Versione aggiornabile quando esce.
+const HANSEN_DATASET = 'UMD/hansen/global_forest_change_2023_v1_11';
 
-    const url = collection.getThumbURL({
-      dimensions: '600',
-      format: 'png',
-    });
+// Genera una thumbnail REALE del forest-change da Earth Engine. Sostituisce la
+// versione rotta che chiamava forestModel.getForestChangeCollection() (metodo
+// inesistente: forestModel è un model Sequelize). Richiede EE configurato;
+// in caso contrario initEarthEngine() rigetta e l'handler risponde 503.
+// options: { band?: string, bbox?: [west, south, east, north] }
+const getForestChangeData = async (options = {}) => {
+  await initializeEarthEngine();
+  const band = options.band || 'treecover2000';
+  const bbox = options.bbox || [-10, 35, 30, 60]; // default: Europa
+  const image = ee.Image(HANSEN_DATASET).select(band);
+  const palette = band === 'treecover2000' ? ['black', 'green'] : ['ffffff', 'ff0000'];
 
-    return { url };
-  } catch (error) {
-    console.error('Error retrieving forest change data:', error);
-    throw error;
-  }
+  const thumbnailUrl = await new Promise((resolve, reject) => {
+    image.getThumbURL(
+      { min: 0, max: 100, palette, dimensions: 512, region: ee.Geometry.Rectangle(bbox) },
+      (url, err) =>
+        err ? reject(new Error(typeof err === 'string' ? err : JSON.stringify(err))) : resolve(url),
+    );
+  });
+
+  return { dataset: HANSEN_DATASET, band, bbox, thumbnailUrl };
 };
 
 // Function to generate chart data

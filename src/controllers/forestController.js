@@ -34,11 +34,16 @@ const clusterForestService = async (req, res) => {
 
 const getForestData = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-    const data = await forestService.getForestChangeData(startDate, endDate);
+    const data = await forestService.getForestChangeData({
+      band: req.query.band,
+      bbox: req.query.bbox ? req.query.bbox.split(',').map(Number) : undefined,
+    });
     res.status(200).json(data);
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving forest data', error });
+    // EE non configurato -> 503 (degrado), altri errori -> 500.
+    const code = /not configured/i.test(error.message) ? 503 : 500;
+    logger.error(`Error retrieving forest data: ${error.message}`);
+    res.status(code).json({ error: 'Forest data error', detail: error.message });
   }
 };
 

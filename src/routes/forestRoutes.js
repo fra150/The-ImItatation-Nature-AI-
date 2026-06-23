@@ -32,7 +32,10 @@ const eeDeferred = (req, res) =>
     message:
       'Forest Earth Engine endpoints are deferred (require an EE session and chartjs-node-canvas).',
   });
-router.get('/forestChange', eeDeferred);
+// Forest change: thumbnail REALE dal dataset Hansen (Earth Engine).
+// 503 se EE non è configurato (manca la chiave service account).
+router.get('/forestChange', forestController.getForestData);
+// Ancora differiti (501): il chart richiede chartjs-node-canvas, la visualize i Map.*
 router.get('/chart/forestChange', eeDeferred);
 router.get('/visualizeForestChange', eeDeferred);
 

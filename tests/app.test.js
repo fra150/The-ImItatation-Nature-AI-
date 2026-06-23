@@ -26,7 +26,7 @@ describe('HTTP surface', () => {
 
   describe('AI routes disabled in core mode -> 501', () => {
     test.each([
-      ['get', '/api/forestChange', 'forest'],
+      ['get', '/api/chart/forestChange', 'forest'],
     ])('%s %s -> 501', async (method, path, feature) => {
       const res = await request(app)[method](path);
       expect(res.status).toBe(501);
