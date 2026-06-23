@@ -72,6 +72,7 @@ app.use('/api/fire-events', protectMutations, fireEventRoutes);
 app.use('/api/weather', protectMutations, weatherDataRoutes);
 app.use('/api/users', auth, userRoutes); // lista utenti sensibile -> auth su tutto
 app.use('/api/areas', protectMutations, areaRoutes);
+app.use('/api/classify', protectMutations, require('./routes/classificationRoutes'));
 // forestRoutes è montato sul prefisso condiviso '/api': va registrato DOPO le
 // route '/api/...' più specifiche, altrimenti le oscurerebbe.
 app.use('/api', protectMutations, forestRoutes);
