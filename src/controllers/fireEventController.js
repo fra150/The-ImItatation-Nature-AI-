@@ -1,4 +1,6 @@
 const FireIncident = require('../models/fireEvents');
+const FireEvent = FireIncident; // stesso model: il file usa entrambi i nomi
+const logger = require('../utils/logger');
 const Drone = require('../models/drone');
 const { findNearestDrone, assignDroneToFire } = require('../utils/droneUtils');
 const { analyzeData } = require('../services/geminiService');
