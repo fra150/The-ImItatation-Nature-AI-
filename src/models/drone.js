@@ -65,7 +65,7 @@ const Drone = sequelize.define(
       },
     },
     location: {
-      type: DataTypes.GEOMETRY('POINT'),
+      type: DataTypes.JSON, // {latitude, longitude} — compatibile SQLite + MySQL
       allowNull: true, // Location can be null if the drone is not flying
     },
     action: {

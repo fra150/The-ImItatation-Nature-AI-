@@ -1,21 +1,30 @@
-// File: database Config.js
+// File: database config — dialect configurabile.
 const { Sequelize } = require('sequelize');
+const path = require('path');
 require('dotenv').config();
 
-const sequelize = new Sequelize(
-  'mysql://' +
-    process.env.DB_USER +
-    ':' +
-    process.env.DB_PASS +
-    '@' +
-    process.env.DB_HOST +
-    ':' +
-    process.env.DB_PORT +
-    '/' +
-    process.env.DB_NAME,
-);
+// Default: SQLite (file locale, zero setup, reale e testabile subito).
+// In produzione imposta DB_DIALECT=mysql + DB_HOST/DB_USER/DB_PASS/DB_NAME.
+const dialect = process.env.DB_DIALECT || 'sqlite';
 
-// Error handling .
+let sequelize;
+if (dialect === 'sqlite') {
+  const storage =
+    process.env.DB_STORAGE ||
+    (process.env.NODE_ENV === 'test'
+      ? ':memory:'
+      : path.join(__dirname, '..', '..', 'database.sqlite'));
+  sequelize = new Sequelize({ dialect: 'sqlite', storage, logging: false });
+} else {
+  sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
+    dialect,
+    logging: false,
+  });
+}
+
+// Error handling.
 const connectToDatabase = async () => {
   try {
     await sequelize.authenticate();
@@ -24,9 +33,5 @@ const connectToDatabase = async () => {
     console.error('Error connecting to the database:', error);
   }
 };
-//connectToDatabase();
-module.exports = { sequelize, connectToDatabase };
 
-/* Here is an improvement for a secure database connection that has been enhanced using a complete connection string, which includes both the port and the database name.
- Additionally, the database connection is simulated as a demo, and in the future, a real connection to MySQL will be used. 
- Furthermore, I have also included error handling for any potential issues that may arise during the database connection. */
+module.exports = { sequelize, connectToDatabase };

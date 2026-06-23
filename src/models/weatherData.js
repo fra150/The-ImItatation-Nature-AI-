@@ -80,11 +80,13 @@ const util = async () => {
 };
 
 // Export the model for use in other modules
-module.exports = {
-  WeatherData,
-  insertWeatherData,
-  util,
-};
+// Esporta il model WeatherData COME modulo (così `require('./weatherData')`
+// restituisce il model usabile, es. nelle associazioni di index.js), ed espone
+// anche i handle nominati per chi destruttura (`const { WeatherData } = ...`).
+module.exports = WeatherData;
+module.exports.WeatherData = WeatherData;
+module.exports.insertWeatherData = insertWeatherData;
+module.exports.util = util;
 
 /* In this code, I have created a weather data model using Sequelize, a powerful ORM (Object-Relational Mapping) for Node.js. I have defined a model called `WeatherData` that represents the weather data I want to store in a database. The model has fields such as `date`, `mean_2m_air_temperature`, `total_precipitation`, `dewpoint_2m_temperature`, `mean_sea_level_pressure`, `surface_pressure`, and `u_component_of_wind_10m`.
 I have also created a function called `insertWeatherData` that takes a `weatherData` object as a parameter and uses the `WeatherData` model to insert the data into the database. The function uses Sequelize's `create` method to create a new instance of the `WeatherData` model with the provided data and save it to the database.

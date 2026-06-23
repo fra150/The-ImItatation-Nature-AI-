@@ -6,32 +6,32 @@ const FireEvent = require('./fireEvents');
 const User = require('./user');
 const WeatherData = require('./weatherData');
 
-// Associations Drone
-Drone.belongsToMany(Area, { through: 'AreaDrones' });
-Drone.belongsTo(FireEvent, { foreignKey: 'fire_event_id' });
-Drone.belongsTo(Area, { foreignKey: 'area_id' });
+// Associazioni pulite e coerenti (ogni relazione definita UNA volta, con un
+// foreignKey unico — niente colonne duplicate). I foreignKey combaciano con le
+// eventuali colonne FK già dichiarate nei modelli (es. Sensor.AreaId,
+// FireEvent.areaId, WeatherData.areaId) così Sequelize le riusa.
 
-// Associations Sensor
-Sensor.belongsTo(FireEvent, { foreignKey: 'fire_event_id' });
-Sensor.belongsToMany(Area, { through: 'AreaSensors' });
-Sensor.hasMany(Drone, { foreignKey: 'sensor_id' });
-Sensor.hasMany(FireEvent, { foreignKey: 'sensor_id' });
+// Area 1—N Sensor / Drone / FireEvent / WeatherData
+Area.hasMany(Sensor, { foreignKey: 'AreaId' });
+Sensor.belongsTo(Area, { foreignKey: 'AreaId' });
 
-// Associations fireEvents
-FireEvent.hasMany(Drone, { foreignKey: 'fire_event_id' });
-FireEvent.belongsTo(Area, { foreignKey: 'area_id' });
-FireEvent.hasMany(Sensor, { foreignKey: 'fire_event_id' });
-FireEvent.belongsTo(Sensor, { foreignKey: 'detected_by_sensor_id' });
-
-// Associations Area
-Area.hasMany(Drone, { foreignKey: 'area_id' });
-Area.belongsToMany(Drone, { through: 'AreaDrones' });
-Area.belongsToMany(Sensor, { through: 'AreaSensors' });
-Area.hasMany(Sensor, { foreignKey: 'areaId' });
 Area.hasMany(Drone, { foreignKey: 'areaId' });
-Area.hasMany(FireEvent, { foreignKey: 'area_id' });
+Drone.belongsTo(Area, { foreignKey: 'areaId' });
 
-// Export models
+Area.hasMany(FireEvent, { foreignKey: 'areaId' });
+FireEvent.belongsTo(Area, { foreignKey: 'areaId' });
+
+Area.hasMany(WeatherData, { foreignKey: 'areaId' });
+WeatherData.belongsTo(Area, { foreignKey: 'areaId' });
+
+// FireEvent 1—N Drone (droni assegnati a un incendio)
+FireEvent.hasMany(Drone, { foreignKey: 'fireEventId' });
+Drone.belongsTo(FireEvent, { foreignKey: 'fireEventId' });
+
+// FireEvent N—1 Sensor (incendio rilevato da un sensore)
+Sensor.hasMany(FireEvent, { foreignKey: 'detectedBySensorId' });
+FireEvent.belongsTo(Sensor, { foreignKey: 'detectedBySensorId' });
+
 module.exports = {
   Area,
   FireEvent,

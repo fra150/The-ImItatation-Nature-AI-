@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./config/database');
+require('./models'); // registra tutti i modelli + associazioni prima del sync
 const environment = require('./config/environment');
 const { logger } = require('./utils/logger');
 const { loadTrainAndSaveModel } = require('./services/trainingService');
@@ -118,7 +119,7 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info('Database connection established successfully.');
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
     logger.info('Database synchronized successfully.');
   } catch (error) {
     logger.error(`Database unavailable — continuing without DB: ${error.message}`);

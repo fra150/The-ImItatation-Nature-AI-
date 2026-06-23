@@ -30,39 +30,39 @@ const Sensor = sequelize.define(
       allowNull: false,
     },
     name: {
-      type: DataTypes.STRING('Type of model name'),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     description: {
-      type: DataTypes.TEXT('Type of model description'),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     manufacturer: {
-      type: DataTypes.STRING('Type of model manufacturer'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     model: {
-      type: DataTypes.STRING('Type of model model'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     serialNumber: {
-      type: DataTypes.STRING('Type of model serial number'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     firmwareVersion: {
-      type: DataTypes.STRING('Type of model firmware version'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     hardwareVersion: {
-      type: DataTypes.STRING('Type of model hardware version'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     softwareVersion: {
-      type: DataTypes.STRING('Type of model software version'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
     location: {
-      type: DataTypes.GEOMETRY('POINT'),
+      type: DataTypes.JSON, // {latitude, longitude} — compatibile SQLite + MySQL
       allowNull: false,
     },
     status: {

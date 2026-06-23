@@ -20,7 +20,7 @@ const Area = sequelize.define(
       },
     },
     location: {
-      type: DataTypes.GEOMETRY, // Defines the geographical area (can be a specific point, polygon, etc.)
+      type: DataTypes.JSON, // {latitude, longitude} o GeoJSON — compatibile SQLite + MySQL
       allowNull: false,
     },
     description: {
