@@ -158,3 +158,4 @@ CODE_OF_CONDUCT.md
 # File temporanei e piani di refactoring locali
 REFACTORING_PLAN.md
 *.local.*
+.gstack/
