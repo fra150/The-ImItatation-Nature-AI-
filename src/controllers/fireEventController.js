@@ -4,6 +4,10 @@ const logger = require('../utils/logger');
 const Drone = require('../models/drone');
 const { findNearestDrone, assignDroneToFire } = require('../utils/droneUtils');
 const { analyzeData } = require('../services/geminiService');
+const fireWorkflow = require('../services/fireWorkflowService');
+// check/validationResult erano USATI in createFireEvent/addFireEvent ma mai
+// importati: ogni chiamata lanciava ReferenceError. Import aggiunto qui.
+const { check, validationResult } = require('express-validator');
 const { trainSupervisedClassifier,} = require('../services/classificationService/supervisedClassification');
 const {trainUnsupervisedClusterer,} = require('../services/classificationService/unsupervisedClassification');
 const { createCompositeImage } = require('../services/classificationService/dataPreparation');
@@ -231,20 +235,27 @@ const updateFireIncidentStatus = async (req, res, next) => {
   }
 };
 
-// Automatically assigns drones to detected fires
+// Automatically assigns drones to detected fires (enum corretti via service).
 const assignDronesToFires = async (req, res, next) => {
   try {
-    const fires = await FireIncident.findAll({ where: { status: 'active' } });
-    const availableDrones = await Drone.findAll({ where: { status: 'active' } });
-    for (const fire of fires) {
-      const nearestDrone = findNearestDrone(fire.location, availableDrones);
-      if (nearestDrone) {
-        await assignDroneToFire(nearestDrone, fire);
-      }
-    }
-    res.json({ message: 'Drones assigned successfully' });
+    const result = await fireWorkflow.assignDronesToActiveFires();
+    res.json({ message: 'Drones assigned successfully', ...result });
   } catch (error) {
     next(error);
+  }
+};
+
+// Rilevamento -> creazione FireEvent -> dispatch del drone più vicino.
+// Endpoint che chiude il loop "Bot Padre controlla i droni": riceve un
+// rilevamento (areaId + coordinate + severity) e restituisce l'incendio creato
+// e il drone assegnato (o dispatched:false se nessun drone è disponibile).
+const detectAndDispatch = async (req, res) => {
+  try {
+    const result = await fireWorkflow.detectAndDispatch(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    logger.warn(`detectAndDispatch rejected: ${error.message}`);
+    res.status(400).json({ error: error.message });
   }
 };
 
@@ -265,6 +276,7 @@ module.exports = {
   getActiveFireIncidents,
   updateFireIncidentStatus,
   assignDronesToFires,
+  detectAndDispatch,
   getAllFireEvents,
   createFireEvent,
   updateFireEvent,

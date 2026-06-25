@@ -7,6 +7,7 @@ const { analyzeData } = require('../services/geminiService');
 const logger = require('../utils/logger');
 
 const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
+const fireWorkflow = require('../services/fireWorkflowService');
 const { check, validationResult } = require('express-validator');
 
 // Cervello "Bot Padre": legge i dati dei droni, li analizza con l'AI (Gemini)
@@ -80,18 +81,15 @@ const getDrones = async (req, res) => {
   }
 };
 
-// Automatically assign drones to detected fires
+// Automatically assign drones to detected fires.
+// Delega a fireWorkflowService, che usa gli ENUM corretti
+// (Drone='available', FireEvent='detected'|'in_progress') e coordinate reali.
+// La versione precedente qui filtrava per status:'active' — valore inesistente
+// in entrambi gli enum — quindi non assegnava mai nulla.
 const assignDronesToFires = async (req, res, next) => {
   try {
-    const fires = await FireIncident.findAll({ where: { status: 'active' } });
-    const availableDrones = await Drone.findAll({ where: { status: 'active' } });
-    for (const fire of fires) {
-      const nearestDrone = findNearestDrone(fire.location, availableDrones);
-      if (nearestDrone) {
-        await assignDroneToFire(nearestDrone, fire);
-      }
-    }
-    res.json({ message: 'Drones assigned successfully' });
+    const result = await fireWorkflow.assignDronesToActiveFires();
+    res.json({ message: 'Drones assigned successfully', ...result });
   } catch (error) {
     next(error);
   }

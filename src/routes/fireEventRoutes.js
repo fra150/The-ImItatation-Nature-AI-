@@ -27,6 +27,9 @@ router.post(
 // Register FireEvent routes
 router.get('/', fireEventController.getAllFireEvents);
 router.post('/', fireEventController.createFireEvent);
+// Rilevamento incendio -> crea FireEvent + dispatch del drone più vicino.
+// È una MUTAZIONE: protetta da JWT a livello di app (protectMutations).
+router.post('/detect', fireEventController.detectAndDispatch);
 router.put('/:id', fireEventController.updateFireEvent);
 router.delete('/:id', fireEventController.deleteFireEvent);
 module.exports = router;
