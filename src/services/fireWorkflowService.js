@@ -71,6 +71,8 @@ async function createFireEvent({
   return FireEvent.create({
     areaId,
     location: locationLabel,
+    latitude: hasCoords ? latitude : null,
+    longitude: hasCoords ? longitude : null,
     severity,
     status: 'detected',
     startTime: startTime || new Date(),
@@ -171,7 +173,11 @@ async function assignDronesToActiveFires() {
     const alreadyAssigned = await Drone.findOne({ where: { fireEventId: fire.id } });
     if (alreadyAssigned) continue;
 
-    const coords = parseCoords(fire.location);
+    // Preferisci le coordinate persistite; ripiega sul parsing di `location`
+    // per gli incendi storici creati prima delle colonne lat/lng.
+    const coords =
+      parseCoords({ latitude: fire.latitude, longitude: fire.longitude }) ||
+      parseCoords(fire.location);
     if (!coords) continue;
 
     const drone = await findNearestAvailableDrone(coords);

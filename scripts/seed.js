@@ -56,8 +56,8 @@ async function seed() {
   // --- Eventi incendio ---
   const now = Date.now();
   await FireEvent.bulkCreate([
-    { areaId: etna.id, location: 'Cresta nord Etna', startTime: new Date(now - 2 * 3600 * 1000), severity: 'high', status: 'in_progress', description: 'Focolaio rilevato da ETNA-THERM-01' },
-    { areaId: aspromonte.id, location: 'Versante est Aspromonte', startTime: new Date(now - 48 * 3600 * 1000), endTime: new Date(now - 40 * 3600 * 1000), severity: 'medium', status: 'extinguished', description: 'Incendio domato dalla squadra droni' },
+    { areaId: etna.id, location: 'Cresta nord Etna', latitude: 37.758, longitude: 14.998, startTime: new Date(now - 2 * 3600 * 1000), severity: 'high', status: 'in_progress', description: 'Focolaio rilevato da ETNA-THERM-01' },
+    { areaId: aspromonte.id, location: 'Versante est Aspromonte', latitude: 38.185, longitude: 15.91, startTime: new Date(now - 48 * 3600 * 1000), endTime: new Date(now - 40 * 3600 * 1000), severity: 'medium', status: 'extinguished', description: 'Incendio domato dalla squadra droni' },
   ]);
 
   // --- Dati meteo (ERA5, temperature in Kelvin) ---

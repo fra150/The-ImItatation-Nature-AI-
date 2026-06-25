@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 
-// Mappa Leaflet dell'Italia con marker per aree, sensori, droni e incendi
-// (gli incendi sono posizionati sul centro dell'area di appartenenza).
+// Mappa Leaflet dell'Italia con marker per aree, sensori, droni e incendi.
+// Gli incendi usano le proprie coordinate (latitude/longitude); per i fuochi
+// storici che ne sono privi si ripiega sul centro dell'area di appartenenza.
 export default function MapView({ areas = [], sensors = [], drones = [], fires = [] }) {
   const el = useRef(null);
   const map = useRef(null);
@@ -49,8 +50,10 @@ export default function MapView({ areas = [], sensors = [], drones = [], fires =
           .addTo(grp);
     });
     fires.forEach((f) => {
+      // Coordinate proprie dell'incendio se presenti, altrimenti centro area.
+      const own = typeof f.latitude === 'number' ? [f.latitude, f.longitude] : null;
       const a = areaById[f.areaId];
-      const p = a && coord(a.location);
+      const p = own || (a && coord(a.location));
       if (p)
         L.circleMarker(p, { radius: 14, color: '#dc2626', fillColor: '#ef4444', fillOpacity: 0.5 })
           .bindPopup(`🔥 <b>${f.location}</b><br/>gravità: ${f.severity} · ${f.status}`)

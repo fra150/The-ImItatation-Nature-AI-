@@ -30,11 +30,22 @@ FireEvent.init(
       },
     },
     location: {
-      type: DataTypes.STRING(255), // Limits length to 255 characters
+      type: DataTypes.STRING(255), // Etichetta leggibile (es. "Cresta nord Etna")
       allowNull: false,
       validate: {
         notEmpty: true, // Does not allow empty strings
       },
+    },
+    // Coordinate reali del focolaio: permettono di posizionare l'incendio sulla
+    // mappa nel punto esatto (non più al centro dell'area) e di calcolare la
+    // distanza dei droni senza dover ri-parsare la stringa `location`.
+    latitude: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
     },
     startTime: {
       type: DataTypes.DATE,

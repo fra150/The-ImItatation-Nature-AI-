@@ -52,6 +52,9 @@ describe('fire workflow service (detect -> create -> dispatch)', () => {
     expect(result.dispatched).toBe(true);
     expect(result.assignedDrone.id).toBe(near.id);
     expect(result.fireEvent.status).toBe('in_progress');
+    // Coordinate del focolaio persistite (per la mappa e l'assegnazione batch).
+    expect(result.fireEvent.latitude).toBeCloseTo(37.06);
+    expect(result.fireEvent.longitude).toBeCloseTo(15.04);
 
     const reloaded = await Drone.findByPk(near.id);
     expect(reloaded.status).toBe('in_use');
