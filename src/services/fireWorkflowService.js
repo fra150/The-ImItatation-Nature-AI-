@@ -14,6 +14,7 @@
 const geolib = require('geolib');
 const { FireEvent, Drone } = require('../models');
 const logger = require('../utils/logger');
+const realtime = require('./realtimeService');
 
 // Stati di un incendio ancora "aperto" (da gestire). 'extinguished' è escluso.
 const ACTIVE_FIRE_STATUSES = ['detected', 'in_progress'];
@@ -129,6 +130,7 @@ async function assignDroneToFireEvent(drone, fireEvent) {
   }
 
   logger.info(`Drone ${drone.id} assigned to fire event ${fireEvent.id}`);
+  realtime.emitDroneUpdate(drone); // broadcast telemetria drone aggiornata
   return drone;
 }
 
@@ -140,6 +142,7 @@ async function assignDroneToFireEvent(drone, fireEvent) {
  */
 async function detectAndDispatch(payload = {}) {
   const fireEvent = await createFireEvent(payload);
+  realtime.emitFireEvent(fireEvent); // nuovo incendio -> avvisa subito i client
 
   const coords =
     parseCoords(
@@ -155,6 +158,7 @@ async function detectAndDispatch(payload = {}) {
   }
 
   await assignDroneToFireEvent(drone, fireEvent);
+  realtime.emitFireDispatch({ fireEvent, assignedDrone: drone }); // dispatch completato
   return { fireEvent, assignedDrone: drone, dispatched: true };
 }
 

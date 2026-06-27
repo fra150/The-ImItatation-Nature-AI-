@@ -1,10 +1,12 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const { sequelize } = require('./config/database');
 require('./models'); // registra tutti i modelli + associazioni prima del sync
 const environment = require('./config/environment');
 const { logger } = require('./utils/logger');
 const { loadTrainAndSaveModel } = require('./services/trainingService');
+const { initRealtime } = require('./services/realtimeService');
 
 const app = express();
 const port = environment.port;
@@ -134,8 +136,13 @@ async function startServer() {
 
   initBackgroundServices();
 
-  return app.listen(port, () => {
-    logger.info(`Server is listening on port ${port}`);
+  // Server HTTP esplicito così Socket.io può agganciarsi sopra Express e
+  // condividere la stessa porta (telemetria droni/incendi in tempo reale).
+  const server = http.createServer(app);
+  initRealtime(server, { corsOrigin: process.env.CORS_ORIGIN });
+
+  return server.listen(port, () => {
+    logger.info(`Server (HTTP + Socket.io) is listening on port ${port}`);
   });
 }
 

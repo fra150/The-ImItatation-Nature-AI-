@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 
 const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
 const fireWorkflow = require('../services/fireWorkflowService');
+const realtime = require('../services/realtimeService');
 const { check, validationResult } = require('express-validator');
 
 // Cervello "Bot Padre": legge i dati dei droni, li analizza con l'AI (Gemini)
@@ -109,6 +110,7 @@ const updateDroneStatus = async (req, res, next) => {
     drone.batteryLevel = batteryLevel;
     drone.lastSensorData = sensorData;
     await drone.save();
+    realtime.emitDroneUpdate(drone); // telemetria live verso la dashboard
 
     // Analisi AI dei dati sensore (opzionale/graceful): il metodo dedicato non
     // è ancora implementato in aiAnalysisService, quindi degrada a null senza
