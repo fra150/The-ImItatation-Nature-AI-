@@ -1,5 +1,7 @@
 const http = require('http');
+const jwt = require('jsonwebtoken');
 const realtime = require('../src/services/realtimeService');
+const environment = require('../src/config/environment');
 
 // Verifica il layer real-time SENZA aprire connessioni di rete: che gli emit
 // siano no-op sicuri prima di initRealtime (così i test supertest che non
@@ -37,5 +39,35 @@ describe('realtimeService (Socket.io layer)', () => {
     });
 
     spy.mockRestore();
+  });
+});
+
+describe('realtimeService — auth JWT sull\'handshake del socket', () => {
+  const call = (token) => {
+    const socket = { handshake: { auth: token === undefined ? {} : { token } } };
+    let err;
+    realtime.socketAuth(socket, (e) => {
+      err = e;
+    });
+    return { socket, err };
+  };
+
+  test('rifiuta la connessione senza token', () => {
+    const { err } = call(undefined);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toMatch(/unauthorized/);
+  });
+
+  test('rifiuta un token non valido', () => {
+    const { err } = call('garbage.token.here');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toMatch(/unauthorized/);
+  });
+
+  test('accetta un JWT valido e attacca lo user al socket', () => {
+    const token = jwt.sign({ id: 42, role: 'admin' }, environment.jwtSecret);
+    const { socket, err } = call(token);
+    expect(err).toBeUndefined();
+    expect(socket.user).toEqual({ id: 42, role: 'admin' });
   });
 });

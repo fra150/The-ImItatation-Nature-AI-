@@ -1,7 +1,6 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const geolib = require('geolib');
 const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
 const aiAnalysisService = require('../services/aiAnalysisService');
@@ -22,32 +21,10 @@ const validateDroneData = [
   body('sensors').isArray(),
 ];
 
-// Find the nearest drone to a fire
-const findNearestDrone = (fireLocation, drones) => {
-  let nearestDrone = null;
-  let shortestDistance = Number.MAX_VALUE;
-  for (const drone of drones) {
-    const distance = geolib.getDistance(fireLocation, drone.location);
-    if (distance < shortestDistance) {
-      shortestDistance = distance;
-      nearestDrone = drone;
-    }
-  }
-  return nearestDrone;
-};
-
-// Assign a drone to a fire
-const assignDroneToFire = async (drone, fire) => {
-  drone.status = 'mission';
-  drone.currentMission = fire.id;
-  await drone.save();
-  fire.assignedDrone = drone.id;
-  await fire.save();
-  // NOTA: la pianificazione del percorso (PathfindingService) e l'invio del
-  // comando al drone via hardware non sono ancora implementati. L'assegnazione
-  // drone↔fuoco a DB è completa; qui andrà il canale di comando reale.
-  logger.info(`Drone ${drone.id} assigned to fire ${fire.id}`);
-};
+// NOTA: findNearestDrone / assignDroneToFire sono stati RIMOSSI: la logica reale
+// (enum corretti, distanza geolib, dispatch) vive ora in fireWorkflowService.
+// La vecchia assignDroneToFire scriveva status='mission' (fuori dall'enum Drone)
+// e colonne inesistenti — era un landmine mai chiamato.
 
 // Handles the upload and optimization of drone images
 const uploadDroneImage = async (req, res) => {
@@ -94,8 +71,6 @@ const handleImageProcessingError = (error, res) => {
 module.exports = {
   errorHandler,
   validateDroneData,
-  findNearestDrone,
-  assignDroneToFire,
   uploadDroneImage,
   processAndSaveImage,
   handleImageProcessingError,

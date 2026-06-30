@@ -6,7 +6,7 @@ const AIAnalysisService = require('../services/aiAnalysisService');
 const { analyzeData } = require('../services/geminiService');
 const logger = require('../utils/logger');
 
-const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
+const { uploadDroneImage } = require('../utils/droneUtils');
 const fireWorkflow = require('../services/fireWorkflowService');
 const realtime = require('../services/realtimeService');
 const iotGateway = require('../services/iotGateway');

@@ -7,4 +7,7 @@ import { API_BASE } from './api';
 export const socket = io(API_BASE, {
   autoConnect: false,
   transports: ['websocket', 'polling'],
+  // Il backend richiede un JWT valido nell'handshake (telemetria non pubblica).
+  // Funzione → il token più recente viene letto a ogni (ri)connessione.
+  auth: (cb) => cb({ token: localStorage.getItem('token') }),
 });
