@@ -126,6 +126,35 @@ describe('iotGateway — telemetria & rilevamento (DB in-memory)', () => {
     spy.mockRestore();
   });
 
+  test('init instrada i messaggi MQTT in arrivo agli handler (message -> DB)', async () => {
+    const drone = await Drone.create({
+      identifier: 'DRN-WIRE',
+      model: 'Wire X',
+      status: 'available',
+      location: null,
+    });
+    const c = makeClient();
+    iotGateway.init(c); // registra il listener 'message' + subscribe
+
+    // Simula la consegna del broker: il client emette un 'message'.
+    c.emit(
+      'message',
+      'drones/DRN-WIRE/telemetry',
+      Buffer.from(JSON.stringify({ batteryLevel: 42, latitude: 37.2, longitude: 15.1 })),
+    );
+
+    // onMessage è async: poll in-process fino all'aggiornamento.
+    let reloaded;
+    for (let i = 0; i < 30; i += 1) {
+      reloaded = await Drone.findByPk(drone.id);
+      if (reloaded.batteryLevel === 42) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(reloaded.batteryLevel).toBe(42);
+    expect(reloaded.online).toBe(true);
+    expect(reloaded.location.latitude).toBeCloseTo(37.2);
+  });
+
   test('telemetria da drone sconosciuto è ignorata senza errori', async () => {
     const res = await iotGateway.handleDroneTelemetry('NOPE', { batteryLevel: 50 });
     expect(res).toBeNull();

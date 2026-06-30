@@ -45,11 +45,15 @@ const analyzeDroneData = async (req, res) => {
   }
 };
 
-// Invio (simulato) delle indicazioni ai droni. Sostituire con il canale di
-// comunicazione reale (MQTT / API drone) quando disponibile.
+// Invio REALE delle indicazioni ai droni via MQTT (iotGateway). Se non c'è un
+// broker connesso, i publish sono no-op (published=0) e il flusso resta ok.
 const dispatchToDrones = (analysis, drones) => {
-  logger.info(`Dispatching analysis to ${drones.length} drone(s)`);
-  return { dispatched: drones.length, simulated: true };
+  let published = 0;
+  for (const drone of drones) {
+    if (iotGateway.sendCommand(drone, { type: 'analysis', payload: analysis })) published += 1;
+  }
+  logger.info(`Dispatched analysis to ${drones.length} drone(s); ${published} published over MQTT`);
+  return { dispatched: drones.length, published, broker: published > 0 };
 };
 
 // Add a new drone
