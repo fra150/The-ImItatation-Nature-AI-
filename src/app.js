@@ -106,16 +106,24 @@ function initBackgroundServices() {
 
   if (process.env.MQTT_BROKER_URL) {
     try {
-      const { client, subscribeToTopic, publishMessage } = require('./utils/mqttClient');
+      const mqtt = require('mqtt');
+      const iotGateway = require('./services/iotGateway');
+      const client = mqtt.connect(process.env.MQTT_BROKER_URL, {
+        reconnectPeriod: 10000,
+        connectTimeout: 30000,
+      });
+      iotGateway.init(client); // sottoscrive telemetria droni/sensori + comandi
       app.locals.mqttClient = client;
-      app.locals.mqttSubscribe = subscribeToTopic;
-      app.locals.mqttPublish = publishMessage;
-      logger.info('MQTT client initialized and attached to app.locals');
+      app.locals.iotGateway = iotGateway;
+      logger.info('IoT gateway (MQTT) initialized and attached to app.locals');
     } catch (mqttError) {
-      logger.warn(`MQTT client not available (non-blocking): ${mqttError.message}`);
+      logger.warn(`IoT gateway not available (non-blocking): ${mqttError.message}`);
     }
   } else {
-    logger.info('MQTT broker not configured — skipping MQTT integration');
+    // Degradazione con grazia: il gateway resta in modalità "no broker" (i
+    // publish dei comandi sono no-op che ritornano false). L'app gira lo stesso.
+    require('./services/iotGateway').init(null);
+    logger.info('MQTT broker not configured — IoT gateway in degraded mode');
   }
 }
 

@@ -73,6 +73,36 @@ const Drone = sequelize.define(
       allowNull: false,
       defaultValue: 'patrol',
     },
+    // --- Identità & telemetria IoT (popolate dallo stream MQTT reale) ---
+    // identifier = id del dispositivo usato nei topic MQTT (es. "SKYDIO-01");
+    // distinto dalla PK numerica. Gli altri campi sono lo snapshot "live" che
+    // alimenta mappa/dashboard; lo storico va in DroneData.
+    identifier: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    altitude: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    speed: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    heading: {
+      type: DataTypes.FLOAT, // gradi 0–360
+      allowNull: true,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    online: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,

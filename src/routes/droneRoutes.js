@@ -19,6 +19,8 @@ router.post('/', droneController.addDrone);
 // --- Comando & controllo --------------------------------------------------
 router.post('/assign', droneController.assignDronesToFires); // assegna i droni ai fuochi attivi
 router.post('/analyze', droneController.analyzeDroneData); // analisi AI + dispatch
+router.post('/:id/mission', droneController.sendMission); // invia waypoint via MQTT
+router.post('/:id/command', droneController.sendCommand); // takeoff/land/return/goto…
 router.post('/:droneId/release-agent', droneController.releaseExtinguishingAgent);
 
 // --- Telemetria (droni -> Bot Padre) -------------------------------------

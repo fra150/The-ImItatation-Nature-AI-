@@ -48,9 +48,9 @@ async function seed() {
 
   // --- Droni ---
   await Drone.bulkCreate([
-    { model: 'Skydio X10', status: 'available', batteryLevel: 95, location: { latitude: 37.75, longitude: 14.994 }, action: 'patrol', areaId: etna.id },
-    { model: 'DJI Matrice 350', status: 'in_use', batteryLevel: 60, location: { latitude: 40.011, longitude: 9.299 }, action: 'survey', areaId: gennargentu.id },
-    { model: 'Fireball-Dropper 1', status: 'maintenance', batteryLevel: 20, location: { latitude: 38.179, longitude: 15.899 }, action: 'extinguish', areaId: aspromonte.id },
+    { identifier: 'SKYDIO-01', model: 'Skydio X10', status: 'available', batteryLevel: 95, location: { latitude: 37.75, longitude: 14.994 }, action: 'patrol', areaId: etna.id, online: true, lastSeenAt: new Date() },
+    { identifier: 'DJI-M350-02', model: 'DJI Matrice 350', status: 'in_use', batteryLevel: 60, location: { latitude: 40.011, longitude: 9.299 }, action: 'survey', areaId: gennargentu.id, online: true, lastSeenAt: new Date() },
+    { identifier: 'FIREBALL-03', model: 'Fireball-Dropper 1', status: 'maintenance', batteryLevel: 20, location: { latitude: 38.179, longitude: 15.899 }, action: 'extinguish', areaId: aspromonte.id, online: false },
   ]);
 
   // --- Eventi incendio ---

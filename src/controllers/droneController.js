@@ -9,6 +9,7 @@ const logger = require('../utils/logger');
 const { findNearestDrone, assignDroneToFire, uploadDroneImage } = require('../utils/droneUtils');
 const fireWorkflow = require('../services/fireWorkflowService');
 const realtime = require('../services/realtimeService');
+const iotGateway = require('../services/iotGateway');
 const { check, validationResult } = require('express-validator');
 
 // Cervello "Bot Padre": legge i dati dei droni, li analizza con l'AI (Gemini)
@@ -198,6 +199,45 @@ const uploadImage = (req, res) => {
   uploadDroneImage(req, res);
 };
 
+// Invia una missione (lista di waypoint) al drone via MQTT (iotGateway).
+// `published:false` se non c'è un broker connesso (degrada con grazia).
+const sendMission = async (req, res, next) => {
+  const { id } = req.params;
+  const { waypoints } = req.body;
+  try {
+    const drone = await Drone.findByPk(id);
+    if (!drone) {
+      return res.status(404).json({ error: 'Drone not found' });
+    }
+    if (!Array.isArray(waypoints) || waypoints.length === 0) {
+      return res.status(400).json({ error: 'waypoints must be a non-empty array' });
+    }
+    const published = iotGateway.sendMission(drone, waypoints);
+    res.status(202).json({ message: 'Mission queued', droneId: drone.id, waypoints: waypoints.length, published });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Invia un comando generico al drone (takeoff/land/return/goto/release…).
+const sendCommand = async (req, res, next) => {
+  const { id } = req.params;
+  const { type, ...params } = req.body;
+  try {
+    if (!type) {
+      return res.status(400).json({ error: 'command "type" is required' });
+    }
+    const drone = await Drone.findByPk(id);
+    if (!drone) {
+      return res.status(404).json({ error: 'Drone not found' });
+    }
+    const published = iotGateway.sendCommand(drone, { type, ...params });
+    res.status(202).json({ message: 'Command queued', droneId: drone.id, type, published });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addDrone,
   getDrones,
@@ -207,6 +247,8 @@ module.exports = {
   releaseExtinguishingAgent,
   uploadImage,
   analyzeDroneData,
+  sendMission,
+  sendCommand,
 };
 
 /*In this part of the code, we handle operations related to drones used for fire control. Here's an explanation of the main steps:
