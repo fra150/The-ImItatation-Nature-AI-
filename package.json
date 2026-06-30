@@ -7,6 +7,8 @@
     "start": "node src/app.js",
     "dev": "nodemon  src/app.js",
     "seed": "node scripts/seed.js",
+    "broker": "docker run --rm -p 1883:1883 eclipse-mosquitto sh -c \"printf 'listener 1883\\nallow_anonymous true\\n' > /tmp/m.conf && mosquitto -c /tmp/m.conf\"",
+    "drone:sim": "node scripts/virtualDrone.js",
     "test": "jest --forceExit",
     "test:watch": "jest --watch"
   },
