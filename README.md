@@ -4,187 +4,123 @@
 
 A future where forest fires are stopped in their tracks.
 
-Imagine a world where the devastation of forest fires is just a distant memory. The Imitatation Nature AI turns this dream into reality, thanks to a revolutionary prevention system powered by artificial intelligence.
+The Imitatation Nature AI (inspired by Alan Turing) is a wildfire-prevention system: satellite data, ground sensors, and an autonomous drone fleet talk to a single backend ("Bot Padre") that detects fires and dispatches the nearest available drone — in real time.
 
 ## Table of Contents
 
-1. [The Problem: A Growing Global Threat](#the-problem-a-growing-global-threat)
-2. [Our Solution](#our-solution)
-3. [How It Works](#how-it-works)
-4. [Demo Execution Instructions](#demo-execution-instructions)
-5. [Limitations](#limitations)
-6. [Future Vision](#future-vision)
+1. [The Problem](#the-problem-a-growing-global-threat)
+2. [What Actually Works Today](#what-actually-works-today)
+3. [Architecture](#architecture)
+4. [Running It](#running-it)
+5. [Limitations & Honest Status](#limitations--honest-status)
+6. [Roadmap](#roadmap)
 7. [Contacts](#contacts)
 8. [License](#license)
-9. [Acknowledgments](#acknowledgments)
 
 ## The Problem: A Growing Global Threat
 
-Forest fires pose an increasingly severe threat to our planet. They cause irreparable environmental damage, endanger human and animal lives, and release massive amounts of CO2 into the atmosphere. Traditional solutions often intervene too late.
+Forest fires cause irreparable environmental damage, endanger lives, and release massive amounts of CO2. Traditional response is reactive — it intervenes only after a fire is already visible. This project focuses on catching it earlier and coordinating the response automatically.
 
-## Our Solution
+## What Actually Works Today
 
-The Imitatation Nature AI (inspired by Alan Turing) is a revolutionary system that harnesses the power of artificial intelligence to predict and prevent forest fires, protecting the environment and saving lives. Unlike traditional systems that only react after a fire has broken out, The Imitatation Nature AI focuses on prevention, acting before the fire becomes uncontrollable and stopping it in its tracks.
+This is a real, running system — not a mockup. Everything below is backed by an automated test suite (`npm test`, 70+ tests) and has been manually verified end-to-end.
 
-## How It Works
+- **Backend (Node/Express + Sequelize)**: JWT auth (register/login, protected mutations), a real database (SQLite by default, zero setup; MySQL for production), and a full CRUD surface for areas, sensors, drones, fire events, weather and forest data.
+- **Google Earth Engine — live**: 5 endpoints serve real satellite imagery from a service account: forest-change detection (Hansen dataset), ERA5 temperature, RTMA wind, and supervised/unsupervised land-cover classification.
+- **Fire → drone dispatch pipeline**: detecting a fire (`POST /api/fire-events/detect`, or automatically from a sensor reading over threshold) creates a `FireEvent` and dispatches the nearest *available* drone by real GPS distance. Releasing the extinguishing agent closes the loop: the fire is marked extinguished and the drone is freed for its next mission.
+- **Real-time (Socket.io, JWT-protected)**: the dashboard updates live — drone telemetry, new fires, dispatches, and resolutions — with no polling or page reloads.
+- **IoT / MQTT gateway**: drones and sensors are hardware-agnostic MQTT devices (`drones/{id}/{telemetry,status,ack,commands}`, `sensors/{id}/telemetry`). The gateway degrades gracefully with no broker connected.
+- **Connection health**: the gateway tracks WiFi/radio signal strength (RSSI), link quality, and latency per drone; a backend watchdog automatically marks a drone offline if its telemetry goes silent, and raises a weak-signal alert when the link degrades — because a real radio link drops without asking permission.
+- **A virtual drone (SITL)**: `scripts/virtualDrone.js` speaks the *exact* protocol a physical drone will — it simulates real flight (GPS chasing waypoints, battery drain, low-battery return-to-home) and real link physics (signal degrading with distance from base). It lets you fly and demo the entire system with zero hardware; the physical drone is a drop-in replacement.
+- **Frontend (React + Vite)**: a login-gated dashboard with a live Leaflet map (areas, sensors, drones, fires), an Earth Engine panel, and a real-time connection indicator.
 
-The Imitatation Nature AI operates in three main phases:
+## Architecture
 
-### 1. Predictive Analysis with Google Gemini 1.5 Pro
-
-The heart of the system is Google Gemini 1.5 Pro, an advanced artificial intelligence that analyzes data from:
-
-- **IoT sensors**: Deployed in forested areas, they monitor temperature, humidity, smoke, gas, LIDAR, movement, light, proximity, vibration, position, biometric data, level, seismic, magnetic, and wind speed.
-- **Satellite images**: Provide a global and real-time view of the terrain conditions using Google Earth Engine.
-- **Weather models**: Process data to predict conditions favorable to fires.
-- **Historical databases**: Use information from past fires to improve predictions.
-
-The AI employs machine learning algorithms, including:
-
-- Deep reinforcement learning
-- Supervised and unsupervised learning
-- Graph Neural Networks (GNN)
-
-These algorithms enable:
-
-- Precisely identifying areas at risk of fire
-- Predicting the evolution of a potential fire
-- Planning timely interventions
-
-### 2. Monitoring and Alert with Autonomous Drones
-
-Autonomous drones, such as those produced by Skydio or similar, serve as the guardians of our forests:
-
-- They patrol extensive forested areas autonomously, guided by AI.
-- Equipped with high-resolution thermal and optical sensors.
-- Detect fire signs promptly.
-- Controlled by Google AI to optimize flight routes and process large amounts of data using machine learning algorithms.
-
-### 3. Rapid and Coordinated Intervention
-
-In case of fire sign detection:
-
-- Drones intervene immediately, releasing targeted fire-suppressing agents.
-- The system sends a detailed notification to firefighters, both written and vocal, including:
-  - Precise location
-  - Thermal images
-  - Analysis of the potential spread of the fire
-
-This approach allows for containing the fire at its earliest stages, minimizing damage and protecting the environment.
-
-## Demo Execution Instructions
-
-The Imitatation Nature AI demo provides an insight into the system's operation, using simulated data and limited functionality.
-
-### Prerequisites:
-
-- Node.js
-- TensorFlow
-- Access to Google Earth data
-- Access to MQTT sensors
-- Access to a vector database
-- Access to a cloud (in this case, Google Cloud)
-- Your own JWT key
-- A database (in this case, Mysql2)
-- A drone (with a 'Fireball' fire-suppressing agent)
-
-### Installation:
-
-1. Clone the repository:
-
-   ```bash
-   git clone [https://github.com/fra150/The-ImItatation-Nature-AI-.git]
-   cd theimitatationnatureai
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   cd TheImitatationNatureAI
-   npm install
-   ```
-
-3. Configuration:
-   Create a `.env` file in the project root with the following variables:
-
-   ```
-   DB_HOST=localhost
-   PORT=[server_port]
-   DB_PORT=[database_port]
-   DB_NAME=[database_name]
-   DB_USER=[database_user]
-   DB_DRIVER=mysql
-   DB_PASS=[database_password]
-   JWT_SECRET=[jwt_secret]
-   GOOGLE_MAPS_API_KEY=[google_maps_api_key]
-   GEMINI_API_KEY=[gemini_api_key]
-   EMAIL_USER=[google_account_email]
-   EMAIL_PASS=[email_password]
-   MQTT_BROKER_URL=mqtt://[mqtt_broker_address]
-   NOTIFICATION_EMAIL_RECIPIENT=[notification_email_recipient]
-   NOTIFICATION_EMAIL_SUBJECT=Fire Event Notification
-   MODEL_PATH=[model_path]
-   SAVE_PATH=[save_path]
-   EPOCHS=[max_epochs]
-   GOOGLE_APPLICATION_CREDENTIALS=[path_to_google_credentials_file]
-   ```
-
-### Configuration & Execution:
-
-```bash
-# 1. Copy the env template and fill in your values (at minimum DB_* and JWT_SECRET)
-cp .env.example .env
-
-# 2. Install dependencies
-npm install
-
-# 3. Run the automated test suite
-npm test
-
-# 4. Start the server (dev with auto-reload, or production)
-npm run dev
-# or
-npm start
+```
+Physical/virtual drones & IoT sensors
+        │  MQTT (telemetry / commands)
+        ▼
+   IoT Gateway  ──────────────►  Fire Workflow Service
+        │                              │
+        ▼                              ▼
+     Database  ◄──────────────  Socket.io (real-time)
+        │                              │
+        ▼                              ▼
+   REST API (Express, JWT)      React Dashboard (live map)
+        ▲
+        │
+  Google Earth Engine / Gemini (external services)
 ```
 
-> **Note:** the server boots even without a reachable database (best-effort
-> connection) so that `/health` and the API surface stay available in dev.
-> Endpoints that hit the database will return errors until MySQL is configured.
+## Running It
 
-### Limitations
+### Prerequisites
 
-The current demo has some limitations:
+- Node.js (v18+)
+- Docker, **only** if you want a real MQTT broker for drones/sensors (optional — the backend runs fine without one)
 
-- **Simulated data:** The data used in this demo is fictional and is solely intended to demonstrate the system's functionality. A real implementation would require integration with real data sources, such as IoT sensors, satellite images, and historical databases.
-- **Limited functionality:** Some features, such as complete integration with firefighter systems, are not implemented in the demo.
-- **Drone management:** Drone fleet management is currently simulated and would require integration with autonomous flight control systems.
-- **Test suite:** A Jest + Supertest suite covers the core HTTP surface (health endpoint, routing, 404 handling, auth validation, logger). Run it with `npm test`. Coverage is still partial — the AI / Earth Engine paths are not yet tested.
+### Setup
 
-#### Current status (June 2026)
+```bash
+git clone https://github.com/fra150/The-ImItatation-Nature-AI-.git
+cd The-ImItatation-Nature-AI-
+npm install
 
-- **REST API — wired & tested (20 Jest tests):** `/auth` (register/login/logout), `/sensors`, `/api/areas`, `/api/fire-events`, `/api/users`, `/health`, `/drones` (registry, assignment, telemetry, agent release), `/api/weather` and `/api/data` (DB-backed weather / forest-data CRUD), and `/gemini` (real GoogleGenerativeAI — returns `503` until `GEMINI_API_KEY` is set). The AI/weather parts of the active endpoints degrade gracefully when their keys/services are absent.
-- **Deferred — Earth Engine / native ML (return `501`):** the satellite-imagery endpoints (`/api/forestChange`, ERA5/GOES weather imagery, supervised/unsupervised classification) and the ML-training path. These need a live Earth Engine session, the optional `chartjs-node-canvas` / `@google-cloud/text-to-speech` packages, and a working `@tensorflow/tfjs-node` native build (it does not load on Node 22 in this environment).
+cp .env.example .env
+# at minimum, set JWT_SECRET. Everything else has a working default or
+# degrades gracefully (SQLite, no Earth Engine, no Gemini, no MQTT).
 
-In the future, it is planned to integrate with real-time data, a fleet of drones for large-scale intervention, and a complete test suite.
+npm run seed   # demo data: users, areas, sensors, drones, fire events
+npm test       # full automated suite
+npm start      # or `npm run dev` for auto-reload
+```
 
-### Future Vision
+The server starts even without a reachable database or any external API key — `/health` and the route surface stay up, and each integration (Earth Engine, Gemini, MQTT, email) degrades independently instead of crashing the process.
 
-The Imitatation Nature AI has the potential to revolutionize not only forest fire prevention but also other critical areas:
+### Frontend
 
-Smart cities: Imagine The Imitatation Nature AI applied to city management: the system could monitor air pollution levels, optimize traffic flow in real-time, and even identify areas at risk of flooding.
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:5173
+```
 
-Ocean conservation: In the oceans, it could contribute to mapping plastic islands, monitoring endangered marine species, and preventing oil spills.
+Demo login (after `npm run seed`): `francesco` / `Password123!`
 
-### Contacts
+### Full IoT demo (backend + broker + virtual drone)
 
-150francescobulla@gmail.com - [link video](https://youtu.be/lezQ6c0ONto)
+```bash
+npm run broker                                              # Mosquitto via Docker, :1883
+MQTT_BROKER_URL=mqtt://localhost:1883 npm start              # backend
+MQTT_BROKER_URL=mqtt://localhost:1883 npm run drone:sim SKYDIO-01   # virtual drone
+```
 
-### License
+Then send it a mission (`POST /drones/:id/mission` with a JWT and a list of waypoints) and watch it fly, drain battery, and report signal strength live.
+
+## Limitations & Honest Status
+
+- **AI is real but scoped, not science fiction.** Gemini (`GEMINI_API_KEY`) powers text analysis/chat; it is not a deep-reinforcement-learning or graph-neural-network system. Fire-spread prediction and AI-generated incident briefings are on the roadmap, not built yet.
+- **Image classification (TensorFlow.js) does not currently load** on this environment's Node version (native binding issue with `@tensorflow/tfjs-node`) — the training/classification code paths exist but are inactive until that's resolved.
+- **No physical drone hardware is wired up yet.** The MQTT protocol, telemetry model, and dispatch logic are complete and hardware-agnostic; a physical fleet (DJI Cloud API or MAVLink/Pixhawk) still needs a bridge implementation — see Roadmap.
+- **Fire lifecycle is intentionally simplified**: any successful extinguishing-agent release on an assigned drone closes the fire. This models the demo at incident granularity, not a water-volume-vs-fire-size physics simulation.
+- **Single-tenant, single role.** There is no RBAC or multi-tenancy yet — every authenticated user has the same permissions.
+- **Video feed is not live.** The realtime data endpoint returns a placeholder video URL; RTSP-to-browser streaming is not implemented.
+
+## Roadmap
+
+1. **Physical drone hardware** — pick DJI Cloud API (MQTT-native, works with DJI Dock) or MAVLink (Pixhawk/PX4 + a companion-computer bridge), then wire real telemetry/commands through the existing gateway.
+2. **AI briefings** — a Gemini-generated incident summary (satellite + weather + sensor + drone data) and a wind-driven fire-spread estimate, shown as a map overlay.
+3. **SaaS hardening** — RBAC (admin/operator/viewer), multi-tenancy, refresh tokens, per-organization drone fleets.
+4. **Frontend depth** — a fire detail page, incident history, PDF/CSV export, and an in-dashboard drone command UI (today it's API-only).
+
+## Contacts
+
+150francescobulla@gmail.com — [demo video](https://youtu.be/lezQ6c0ONto)
+
+## License
 
 [Apache License 2.0](LICENSE)
 
 ### Acknowledgments
 
-A special thanks goes to [Google](https://about.google/)for the inspiration and innovative technologies that have made this project possible. Also, thanks to firefighters for their tireless work in protecting our communities.
-
-If you're an artificial intelligence enthusiast, concerned about environmental sustainability, or just want to learn more about The Imitatation Nature AI, don't hesitate to contact me. I'm open to collaborations, suggestions, and new ideas to make this project a reality!
+Thanks to [Google](https://about.google/) for Earth Engine and Gemini, and to firefighters everywhere for their work protecting our communities. Contributions, ideas, and collaboration are welcome.
