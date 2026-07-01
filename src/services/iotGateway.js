@@ -22,6 +22,17 @@ const { Drone, Sensor } = require('../models');
 const FIRE_TEMP_THRESHOLD = Number(process.env.FIRE_TEMP_THRESHOLD || 60); // °C
 const FIRE_SMOKE_THRESHOLD = Number(process.env.FIRE_SMOKE_THRESHOLD || 70); // %/ppm-normalizzato
 
+// --- Salute della connessione (WiFi/radio) ----------------------------------
+// Un drone è considerato OFFLINE se non manda telemetria/stato per più di
+// questo timeout (watchdog lato backend: funziona indipendentemente dal
+// broker/LWT, e non richiede che il drone "annunci" la propria disconnessione
+// — utile perché un link radio spesso cade senza un ultimo messaggio pulito).
+const DRONE_OFFLINE_TIMEOUT_MS = Number(process.env.DRONE_OFFLINE_TIMEOUT_MS || 30_000);
+const OFFLINE_WATCHDOG_INTERVAL_MS = Number(process.env.OFFLINE_WATCHDOG_INTERVAL_MS || 10_000);
+// Segnale debole: RSSI in dBm (più vicino a 0 = meglio) e/o qualità link 0–100%.
+const WEAK_SIGNAL_RSSI_DBM = Number(process.env.WEAK_SIGNAL_RSSI_DBM || -80);
+const WEAK_SIGNAL_LINK_QUALITY = Number(process.env.WEAK_SIGNAL_LINK_QUALITY || 30);
+
 // ---------------------------------------------------------------------------
 // Schema dei topic — centralizzato qui così c'è UNA sola fonte di verità.
 //   drones/{id}/telemetry  (drone -> backend)  GPS, batteria, quota, velocità
@@ -48,6 +59,7 @@ function parseTopic(topic) {
 }
 
 let activeClient = null;
+let offlineWatchdogTimer = null;
 
 // Trova un drone dal riferimento del topic: prima per identifier, poi per PK
 // numerica (così funziona sia "SKYDIO-01" sia "7").
@@ -73,12 +85,29 @@ async function handleDroneTelemetry(ref, data = {}) {
   if (num(data.altitude) !== undefined) drone.altitude = data.altitude;
   if (num(data.speed) !== undefined) drone.speed = data.speed;
   if (num(data.heading) !== undefined) drone.heading = data.heading;
+  if (num(data.signalStrength) !== undefined) drone.signalStrength = data.signalStrength;
+  if (num(data.linkQuality) !== undefined) drone.linkQuality = data.linkQuality;
+  if (num(data.latencyMs) !== undefined) drone.latencyMs = data.latencyMs;
   drone.lastSeenAt = new Date();
   drone.online = true;
   await drone.save();
 
   if (typeof data.batteryLevel === 'number' && data.batteryLevel < 20) {
     logger.warn(`IoT: drone ${drone.identifier || drone.id} battery low (${data.batteryLevel}%)`);
+  }
+  const weakSignal =
+    (typeof data.signalStrength === 'number' && data.signalStrength < WEAK_SIGNAL_RSSI_DBM) ||
+    (typeof data.linkQuality === 'number' && data.linkQuality < WEAK_SIGNAL_LINK_QUALITY);
+  if (weakSignal) {
+    logger.warn(
+      `IoT: drone ${drone.identifier || drone.id} weak signal (RSSI ${data.signalStrength ?? '?'}dBm, quality ${data.linkQuality ?? '?'}%)`,
+    );
+    realtime.emit('drone:weak-signal', {
+      droneId: drone.id,
+      identifier: drone.identifier,
+      signalStrength: drone.signalStrength,
+      linkQuality: drone.linkQuality,
+    });
   }
   realtime.emitDroneUpdate(drone);
   return drone;
@@ -98,6 +127,28 @@ async function handleDroneStatus(ref, data = {}) {
   await drone.save();
   realtime.emitDroneUpdate(drone);
   return drone;
+}
+
+// --- Watchdog "drone offline" -----------------------------------------------
+// Un link radio/WiFi spesso cade senza un ultimo messaggio pulito (niente
+// last-will da sottoscrivere), quindi il modo affidabile di rilevare un drone
+// scomparso è lato backend: se non manda nulla da troppo tempo, lo dichiariamo
+// offline noi. Funzione pura (no side effect sul trasporto) → testabile
+// chiamandola direttamente, senza aspettare l'interval reale.
+async function checkOfflineDrones(timeoutMs = DRONE_OFFLINE_TIMEOUT_MS) {
+  const cutoff = new Date(Date.now() - timeoutMs);
+  const stale = await Drone.findAll({ where: { online: true } });
+  const wentOffline = [];
+  for (const drone of stale) {
+    if (!drone.lastSeenAt || drone.lastSeenAt > cutoff) continue;
+    drone.online = false;
+    await drone.save();
+    logger.warn(`IoT: drone ${drone.identifier || drone.id} went offline (no telemetry for >${timeoutMs}ms)`);
+    realtime.emitDroneUpdate(drone);
+    realtime.emit('drone:offline', { droneId: drone.id, identifier: drone.identifier, lastSeenAt: drone.lastSeenAt });
+    wentOffline.push(drone.id);
+  }
+  return wentOffline;
 }
 
 // --- Handler ack comando ----------------------------------------------------
@@ -182,9 +233,30 @@ function sendMission(ref, waypoints, client = activeClient) {
   return sendCommand(ref, { type: 'mission', waypoints }, client);
 }
 
+// Avvia il polling periodico che rileva i droni andati offline. `.unref()`
+// evita che il timer tenga vivo il processo Node (o Jest) da solo.
+function startOfflineWatchdog(intervalMs = OFFLINE_WATCHDOG_INTERVAL_MS) {
+  stopOfflineWatchdog();
+  offlineWatchdogTimer = setInterval(() => {
+    checkOfflineDrones().catch((e) => logger.error(`IoT offline watchdog error: ${e.message}`));
+  }, intervalMs);
+  if (typeof offlineWatchdogTimer.unref === 'function') offlineWatchdogTimer.unref();
+  return offlineWatchdogTimer;
+}
+
+function stopOfflineWatchdog() {
+  if (offlineWatchdogTimer) {
+    clearInterval(offlineWatchdogTimer);
+    offlineWatchdogTimer = null;
+  }
+}
+
 // --- Inizializzazione (chiamata da app.js con un client mqtt connesso) ------
+// Il watchdog offline parte SEMPRE (è basato sul DB, non sul client MQTT);
+// la sottoscrizione ai topic parte solo se c'è un client (altrimenti degraded).
 function init(client) {
   activeClient = client || null;
+  startOfflineWatchdog();
   if (!activeClient) {
     logger.info('IoT gateway: no MQTT client — degraded (no devices over MQTT)');
     return;
@@ -204,9 +276,10 @@ function getClient() {
   return activeClient;
 }
 
-// Solo per i test: azzera lo stato del modulo.
+// Solo per i test: azzera lo stato del modulo (client + watchdog).
 function _reset() {
   activeClient = null;
+  stopOfflineWatchdog();
 }
 
 module.exports = {
@@ -219,9 +292,13 @@ module.exports = {
   handleDroneStatus,
   handleDroneAck,
   handleSensorTelemetry,
+  checkOfflineDrones,
   sendCommand,
   sendMission,
   FIRE_TEMP_THRESHOLD,
   FIRE_SMOKE_THRESHOLD,
+  DRONE_OFFLINE_TIMEOUT_MS,
+  WEAK_SIGNAL_RSSI_DBM,
+  WEAK_SIGNAL_LINK_QUALITY,
   _reset,
 };

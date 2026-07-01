@@ -112,6 +112,30 @@ function bearing(cur, dst) {
   return (deg + 360) % 360;
 }
 
+// Distanza approssimata in metri tra due coordinate (equirettangolare — va
+// benissimo su scala locale, non serve la precisione dell'haversine qui).
+function distanceMeters(a, b) {
+  const R = 6371000;
+  const x = ((b.longitude - a.longitude) * Math.PI) / 180 * Math.cos(((a.latitude + b.latitude) / 2) * Math.PI / 180);
+  const y = ((b.latitude - a.latitude) * Math.PI) / 180;
+  return Math.sqrt(x * x + y * y) * R;
+}
+
+// Simula la salute del link radio verso la ground station (= `home`): più il
+// drone si allontana, più il segnale si degrada (path-loss log-distanza) —
+// stesso comportamento di un vero link WiFi/telemetria a lungo raggio.
+function computeLinkHealth(distM) {
+  const jitter = () => (Math.random() - 0.5) * 4;
+  const rssi = Math.max(-95, Math.min(-30, -30 - 20 * Math.log10(distM + 1) + jitter()));
+  const linkQuality = Math.max(0, Math.min(100, 2 * (rssi + 95)));
+  const latencyMs = 15 + (100 - linkQuality) * 1.5 + Math.random() * 8;
+  return {
+    signalStrength: Math.round(rssi),
+    linkQuality: Math.round(linkQuality),
+    latencyMs: Math.round(latencyMs),
+  };
+}
+
 // --- Loop di simulazione: muove, consuma batteria, pubblica telemetria ------
 function tick() {
   if (target) {
@@ -150,6 +174,8 @@ function tick() {
     publishStatus();
   }
 
+  const link = computeLinkHealth(distanceMeters(home, state));
+
   client.publish(
     T.telemetry,
     JSON.stringify({
@@ -159,6 +185,9 @@ function tick() {
       speed: state.speed,
       heading: state.heading,
       batteryLevel: Number(state.battery.toFixed(1)),
+      signalStrength: link.signalStrength,
+      linkQuality: link.linkQuality,
+      latencyMs: link.latencyMs,
     }),
   );
 }

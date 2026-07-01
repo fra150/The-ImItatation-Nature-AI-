@@ -8,6 +8,15 @@ import EEPanel from '../components/EEPanel';
 // I GET sono pubblici; estrae l'array qualunque sia la forma della risposta.
 const arr = (d) => (Array.isArray(d) ? d : d?.sensors || d?.areas || d?.drones || d?.data || []);
 
+// Etichetta sintetica di salute della connessione (offline / RSSI+link).
+const connectionLabel = (d) => {
+  if (d.online === false) return '⚠️ offline';
+  if (d.linkQuality == null) return '';
+  if (d.linkQuality < 30) return `📶 debole (${d.linkQuality}%)`;
+  if (d.linkQuality < 70) return `📶 media (${d.linkQuality}%)`;
+  return `📶 forte (${d.linkQuality}%)`;
+};
+
 // Inserisce o aggiorna (per id) un elemento in una lista, immutabile.
 const upsert = (list, item) => {
   if (!item || item.id == null) return list;
@@ -105,7 +114,12 @@ export default function Dashboard() {
             <Stat value={activeFires.length} label="Incendi" danger />
           </div>
           <ResList title="🔥 Incendi attivi" items={activeFires.map((f) => `${f.location} — ${f.severity}`)} />
-          <ResList title="🚁 Droni" items={drones.map((d) => `${d.model} · ${d.status} · 🔋${d.batteryLevel}%`)} />
+          <ResList
+            title="🚁 Droni"
+            items={drones.map((d) =>
+              [`${d.model} · ${d.status} · 🔋${d.batteryLevel}%`, connectionLabel(d)].filter(Boolean).join(' · '),
+            )}
+          />
           <ResList title="📡 Sensori" items={sensors.map((s) => `${s.name} (${s.type})`)} />
         </aside>
 

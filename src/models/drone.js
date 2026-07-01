@@ -103,6 +103,19 @@ const Drone = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    // --- Salute della connessione (WiFi/radio verso la ground station) ---
+    signalStrength: {
+      type: DataTypes.FLOAT, // RSSI in dBm (es. -45 ottimo, -90 pessimo)
+      allowNull: true,
+    },
+    linkQuality: {
+      type: DataTypes.FLOAT, // 0–100%, derivato dall'RSSI dal drone/gateway
+      allowNull: true,
+    },
+    latencyMs: {
+      type: DataTypes.FLOAT, // round-trip verso il broker/ground station
+      allowNull: true,
+    },
   },
   {
     sequelize,

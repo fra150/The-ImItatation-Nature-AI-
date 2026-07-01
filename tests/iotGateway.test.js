@@ -212,4 +212,118 @@ describe('iotGateway — telemetria & rilevamento (DB in-memory)', () => {
     expect(fire).toBeNull();
     expect(await FireEvent.count()).toBe(0);
   });
+
+  test('handleDroneTelemetry persiste segnale/qualità link/latenza', async () => {
+    await Drone.create({ identifier: 'DRN-SIG', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-SIG', {
+      signalStrength: -55,
+      linkQuality: 80,
+      latencyMs: 30,
+    });
+    const reloaded = await Drone.findOne({ where: { identifier: 'DRN-SIG' } });
+    expect(reloaded.signalStrength).toBe(-55);
+    expect(reloaded.linkQuality).toBe(80);
+    expect(reloaded.latencyMs).toBe(30);
+  });
+
+  test('segnale debole emette drone:weak-signal', async () => {
+    const spy = jest.spyOn(realtime, 'emit');
+    await Drone.create({ identifier: 'DRN-WEAK', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-WEAK', { signalStrength: -90, linkQuality: 10 });
+    expect(spy).toHaveBeenCalledWith('drone:weak-signal', expect.objectContaining({ identifier: 'DRN-WEAK' }));
+    spy.mockRestore();
+  });
+
+  test('segnale buono NON emette drone:weak-signal', async () => {
+    const spy = jest.spyOn(realtime, 'emit');
+    await Drone.create({ identifier: 'DRN-GOOD', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-GOOD', { signalStrength: -50, linkQuality: 90 });
+    expect(spy).not.toHaveBeenCalledWith('drone:weak-signal', expect.anything());
+    spy.mockRestore();
+  });
+
+  test('checkOfflineDrones dichiara offline un drone silenzioso oltre il timeout', async () => {
+    const stale = await Drone.create({
+      identifier: 'DRN-STALE',
+      model: 'Test X',
+      status: 'available',
+      online: true,
+      lastSeenAt: new Date(Date.now() - 60_000),
+    });
+    const fresh = await Drone.create({
+      identifier: 'DRN-FRESH',
+      model: 'Test X',
+      status: 'available',
+      online: true,
+      lastSeenAt: new Date(),
+    });
+
+    const wentOffline = await iotGateway.checkOfflineDrones(30_000);
+
+    expect(wentOffline).toEqual([stale.id]);
+    expect((await Drone.findByPk(stale.id)).online).toBe(false);
+    expect((await Drone.findByPk(fresh.id)).online).toBe(true);
+  });
+
+  test('checkOfflineDrones emette drone:update e drone:offline per ogni drone rilevato', async () => {
+    const spy = jest.spyOn(realtime, 'emit');
+    await Drone.create({
+      identifier: 'DRN-STALE2',
+      model: 'Test X',
+      status: 'available',
+      online: true,
+      lastSeenAt: new Date(Date.now() - 60_000),
+    });
+    await iotGateway.checkOfflineDrones(30_000);
+    expect(spy).toHaveBeenCalledWith('drone:offline', expect.objectContaining({ identifier: 'DRN-STALE2' }));
+    spy.mockRestore();
+  });
+
+  test('un drone senza lastSeenAt non viene toccato dal watchdog', async () => {
+    const drone = await Drone.create({
+      identifier: 'DRN-NOSEEN',
+      model: 'Test X',
+      status: 'available',
+      online: true,
+      lastSeenAt: null,
+    });
+    const wentOffline = await iotGateway.checkOfflineDrones(30_000);
+    expect(wentOffline).not.toContain(drone.id);
+    expect((await Drone.findByPk(drone.id)).online).toBe(true);
+  });
+});
+
+describe('iotGateway — watchdog offline (timer)', () => {
+  afterEach(() => {
+    iotGateway._reset();
+    jest.useRealTimers();
+  });
+
+  test('init() pianifica un solo interval "unref"-abile (non tiene vivo il processo)', () => {
+    const setIntervalSpy = jest.spyOn(global, 'setInterval');
+    iotGateway.init(null); // degraded mode: il watchdog parte comunque (è DB-based)
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    const handle = setIntervalSpy.mock.results[0].value;
+    expect(typeof handle.unref).toBe('function');
+    setIntervalSpy.mockRestore();
+  });
+
+  test('_reset() cancella l\'interval pianificato da init()', () => {
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+    iotGateway.init(null);
+    iotGateway._reset();
+
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    clearIntervalSpy.mockRestore();
+  });
+
+  test('chiamare init() due volte non lascia due watchdog attivi in parallelo', () => {
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+    iotGateway.init(null);
+    iotGateway.init(null); // la seconda init ferma la precedente prima di ripartire
+
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    clearIntervalSpy.mockRestore();
+  });
 });
