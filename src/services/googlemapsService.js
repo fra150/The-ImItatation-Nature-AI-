@@ -1,16 +1,20 @@
 // Import the Google Maps library
 const { createClient } = require('@googlemaps/google-maps-services-js');
 
-// Check if the Google Maps API key is defined
-if (!process.env.GOOGLE_MAPS_API_KEY) {
-  throw new Error('Google Maps API key is not defined');
-}
-
-// Create a Google Maps client
-const googleMapsClient = createClient({
-  key: process.env.GOOGLE_MAPS_API_KEY,
-  Promise: Promise,
-});
+// Client creato PIGRAMENTE al primo utilizzo, non al require(): così importare
+// questo modulo non fa mai crashare l'app se GOOGLE_MAPS_API_KEY non è
+// configurata (stesso pattern di degradazione graziosa usato altrove nel
+// progetto, es. geminiService/mqtt).
+let googleMapsClient = null;
+const getClient = () => {
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    throw new Error('Google Maps API key is not defined (set GOOGLE_MAPS_API_KEY)');
+  }
+  if (!googleMapsClient) {
+    googleMapsClient = createClient({ key: process.env.GOOGLE_MAPS_API_KEY, Promise: Promise });
+  }
+  return googleMapsClient;
+};
 
 // Function to get the geolocation of an address
 const getGeolocation = async (address) => {
@@ -21,7 +25,7 @@ const getGeolocation = async (address) => {
 
   try {
     // Make a request to the Google Maps API
-    const response = await googleMapsClient.geocode({ address }).asPromise();
+    const response = await getClient().geocode({ address }).asPromise();
 
     // Check if the response is valid
     if (!response.json.results || response.json.results.length === 0) {
@@ -31,6 +35,12 @@ const getGeolocation = async (address) => {
     // Return the geolocation
     return response.json.results[0].geometry.location;
   } catch (error) {
+    // Chiave mancante o indirizzo non valido: rilancia il messaggio originale,
+    // così chi chiama sa esattamente cosa mancava (prima veniva inghiottito
+    // da un messaggio generico "Failed to get geolocation").
+    if (error.message.includes('API key') || error.message === 'No results found') {
+      throw error;
+    }
     // Handle network or connection errors
     if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
       throw new Error('Failed to connect to Google Maps API');
