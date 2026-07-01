@@ -135,6 +135,38 @@ async function assignDroneToFireEvent(drone, fireEvent) {
 }
 
 /**
+ * Chiude il ciclo di vita dell'incendio: quando il drone assegnato sgancia
+ * l'agente estinguente, consideriamo l'incendio spento e liberiamo il drone
+ * per la prossima missione. Semplificazione consapevole (granularità da demo,
+ * coerente col resto del progetto): non modelliamo "quanta acqua serve per
+ * quanto fuoco" — UNO sgancio riuscito su un drone legato a un incendio =
+ * intervento completato. Prima di questa funzione un incendio restava
+ * 'in_progress' per sempre e il drone restava 'in_use' per sempre, anche a
+ * missione conclusa.
+ * @returns {Promise<FireEvent|null>} l'incendio risolto, o null se il drone
+ *   non era legato a nessun incendio aperto.
+ */
+async function resolveFireOnAgentRelease(drone) {
+  if (!drone.fireEventId) return null;
+  const fireEvent = await FireEvent.findByPk(drone.fireEventId);
+  if (!fireEvent || fireEvent.status === 'extinguished') return null;
+
+  fireEvent.status = 'extinguished';
+  fireEvent.endTime = new Date();
+  await fireEvent.save();
+
+  drone.status = 'available';
+  drone.action = 'patrol';
+  drone.fireEventId = null;
+  await drone.save();
+
+  logger.info(`Fire event ${fireEvent.id} extinguished by drone ${drone.id}; drone freed for next mission`);
+  realtime.emitFireResolved(fireEvent);
+  realtime.emitDroneUpdate(drone);
+  return fireEvent;
+}
+
+/**
  * Orchestrazione completa: crea l'incendio e gli manda subito il drone più
  * vicino. Degrada con grazia: se non ci sono droni disponibili, l'incendio
  * resta registrato e `dispatched` è false (nessun errore).
@@ -200,6 +232,7 @@ module.exports = {
   createFireEvent,
   findNearestAvailableDrone,
   assignDroneToFireEvent,
+  resolveFireOnAgentRelease,
   detectAndDispatch,
   assignDronesToActiveFires,
 };

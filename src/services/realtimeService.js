@@ -97,6 +97,11 @@ function emitFireDispatch({ fireEvent, assignedDrone } = {}) {
   });
 }
 
+/** Incendio risolto (spento) — fine del ciclo di vita. */
+function emitFireResolved(fire) {
+  return emit('fire:resolved', plain(fire));
+}
+
 // Solo per i test: chiude e azzera il singleton fra un caso e l'altro.
 function _reset() {
   if (io) {
@@ -113,5 +118,6 @@ module.exports = {
   emitDroneUpdate,
   emitFireEvent,
   emitFireDispatch,
+  emitFireResolved,
   _reset,
 };

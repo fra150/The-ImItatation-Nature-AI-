@@ -109,6 +109,56 @@ describe('fire workflow service (detect -> create -> dispatch)', () => {
     const reloaded = await FireEvent.findByPk(fire.id);
     expect(reloaded.status).toBe('in_progress');
   });
+
+  test('resolveFireOnAgentRelease chiude il ciclo completo: detect -> dispatch -> resolve', async () => {
+    const drone = await Drone.create({
+      model: 'DJI-Resolve',
+      status: 'available',
+      location: { latitude: 37.05, longitude: 15.05 },
+    });
+
+    const { fireEvent } = await fireWorkflow.detectAndDispatch({
+      areaId: area.id,
+      latitude: 37.06,
+      longitude: 15.04,
+      severity: 'high',
+    });
+
+    const assignedDrone = await Drone.findByPk(drone.id);
+    expect(assignedDrone.status).toBe('in_use');
+    expect(assignedDrone.fireEventId).toBe(fireEvent.id);
+
+    const resolved = await fireWorkflow.resolveFireOnAgentRelease(assignedDrone);
+
+    expect(resolved.id).toBe(fireEvent.id);
+    expect(resolved.status).toBe('extinguished');
+    expect(resolved.endTime).toBeTruthy();
+
+    const freedDrone = await Drone.findByPk(drone.id);
+    expect(freedDrone.status).toBe('available');
+    expect(freedDrone.action).toBe('patrol');
+    expect(freedDrone.fireEventId).toBeNull();
+  });
+
+  test('resolveFireOnAgentRelease su un drone senza incendio assegnato ritorna null', async () => {
+    const drone = await Drone.create({ model: 'DJI-Idle', status: 'available' });
+    const result = await fireWorkflow.resolveFireOnAgentRelease(drone);
+    expect(result).toBeNull();
+  });
+
+  test('resolveFireOnAgentRelease su un incendio già estinto ritorna null (idempotente)', async () => {
+    const fire = await FireEvent.create({
+      areaId: area.id,
+      location: 'Test',
+      severity: 'low',
+      status: 'extinguished',
+      startTime: new Date(),
+      endTime: new Date(),
+    });
+    const drone = await Drone.create({ model: 'DJI-Done', status: 'in_use', fireEventId: fire.id });
+    const result = await fireWorkflow.resolveFireOnAgentRelease(drone);
+    expect(result).toBeNull();
+  });
 });
 
 describe('fire workflow route wiring', () => {

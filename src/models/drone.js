@@ -64,6 +64,19 @@ const Drone = sequelize.define(
         max: 100,
       },
     },
+    // Litri di agente estinguente ancora a bordo (usato/decrementato da
+    // releaseExtinguishingAgent). Prima non esisteva come campo: il
+    // controller leggeva/scriveva drone.payloadCapacity su un attributo
+    // inesistente, quindi il controllo "capacità insufficiente" non
+    // scattava mai (era sempre `undefined < amount` → false).
+    payloadCapacity: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
     location: {
       type: DataTypes.JSON, // {latitude, longitude} — compatibile SQLite + MySQL
       allowNull: true, // Location can be null if the drone is not flying

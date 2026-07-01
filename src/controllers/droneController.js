@@ -177,6 +177,12 @@ const releaseExtinguishingAgent = async (req, res, next) => {
   const { droneId } = req.params;
   const { amount, target } = req.body;
   try {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'amount must be a positive number' });
+    }
+    if (!target || typeof target.latitude !== 'number' || typeof target.longitude !== 'number') {
+      return res.status(400).json({ error: 'target {latitude, longitude} is required' });
+    }
     const drone = await Drone.findByPk(droneId);
     if (!drone) {
       return res.status(404).json({ error: 'Drone not found' });
@@ -188,11 +194,19 @@ const releaseExtinguishingAgent = async (req, res, next) => {
     // Simulate releasing water or extinguishing agents
     drone.payloadCapacity -= amount;
     await drone.save();
+    realtime.emitDroneUpdate(drone);
     // Log the release
     logger.info(
       `Drone ${droneId} released ${amount} liters of extinguishing agent at ${target.latitude}, ${target.longitude}`,
     );
-    res.json({ message: 'Extinguishing agent released successfully' });
+    // Se il drone era assegnato a un incendio, lo sgancio chiude il ciclo di
+    // vita: incendio -> extinguished, drone libero per la prossima missione.
+    const resolvedFire = await fireWorkflow.resolveFireOnAgentRelease(drone);
+    res.json({
+      message: 'Extinguishing agent released successfully',
+      remainingPayload: drone.payloadCapacity,
+      resolvedFireEventId: resolvedFire ? resolvedFire.id : null,
+    });
   } catch (error) {
     next(error);
   }
