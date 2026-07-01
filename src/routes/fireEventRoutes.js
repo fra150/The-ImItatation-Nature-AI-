@@ -30,6 +30,10 @@ router.post('/', fireEventController.createFireEvent);
 // Rilevamento incendio -> crea FireEvent + dispatch del drone più vicino.
 // È una MUTAZIONE: protetta da JWT a livello di app (protectMutations).
 router.post('/detect', fireEventController.detectAndDispatch);
+// Stima propagazione (locale, gratuita, GET pubblico come le altre letture).
+router.get('/:id/spread', fireEventController.getFireSpreadEstimate);
+// Briefing AI (Gemini, costo esterno): MUTAZIONE protetta da JWT.
+router.post('/:id/briefing', fireEventController.getFireBriefing);
 router.put('/:id', fireEventController.updateFireEvent);
 router.delete('/:id', fireEventController.deleteFireEvent);
 module.exports = router;

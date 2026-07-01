@@ -35,6 +35,13 @@ WeatherData.init(
     u_component_of_wind_10m: {
       type: DataTypes.FLOAT,
     },
+    // Componente nord-sud del vento (banda ERA5 reale, come u_component).
+    // Senza questa la direzione del vento non è calcolabile (solo est-ovest);
+    // con entrambe si ottiene un vero vettore (velocità + rotta) — vedi
+    // fireSpreadService.
+    v_component_of_wind_10m: {
+      type: DataTypes.FLOAT,
+    },
   },
   {
     sequelize,

@@ -4,6 +4,8 @@ const logger = require('../utils/logger');
 const Drone = require('../models/drone');
 const { analyzeData } = require('../services/geminiService');
 const fireWorkflow = require('../services/fireWorkflowService');
+const fireSpreadService = require('../services/fireSpreadService');
+const fireBriefingService = require('../services/fireBriefingService');
 // check/validationResult erano USATI in createFireEvent/addFireEvent ma mai
 // importati: ogni chiamata lanciava ReferenceError. Import aggiunto qui.
 const { check, validationResult } = require('express-validator');
@@ -258,6 +260,47 @@ const detectAndDispatch = async (req, res) => {
   }
 };
 
+// Stima locale (gratuita, nessuna chiamata esterna) della propagazione
+// guidata dal vento — vedi fireSpreadService per i limiti (euristica, non un
+// modello fisico).
+const getFireSpreadEstimate = async (req, res) => {
+  try {
+    const fireEvent = await FireEvent.findByPk(req.params.id);
+    if (!fireEvent) {
+      return res.status(404).json({ error: 'Fire event not found' });
+    }
+    const estimate = await fireSpreadService.estimateSpreadForFireEvent(fireEvent);
+    res.json(estimate);
+  } catch (error) {
+    logger.error(`Error estimating fire spread: ${error.message}`);
+    res.status(500).json({ error: 'Failed to estimate fire spread' });
+  }
+};
+
+// Briefing testuale generato da Gemini a partire dai dati reali dell'incidente
+// (incendio + area + meteo + stima propagazione + droni assegnati). Costa una
+// chiamata esterna: degrada a 503 se GEMINI_API_KEY non è configurata.
+const getFireBriefing = async (req, res) => {
+  try {
+    const { context, briefing } = await fireBriefingService.generateBriefing(req.params.id);
+    res.json({
+      fireEventId: context.fireEvent.id,
+      spread: context.spread,
+      assignedDrones: context.assignedDrones.map((d) => ({ id: d.id, model: d.model, status: d.status })),
+      briefing,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({ error: error.message });
+    }
+    logger.warn(`Fire briefing unavailable: ${error.message}`);
+    res.status(503).json({
+      error: 'AI briefing unavailable',
+      detail: 'Gemini not configured or unreachable (set GEMINI_API_KEY).',
+    });
+  }
+};
+
 /**
  * Calculates the fire intensity based on various parameters
  * @param {number} temperature - The temperature of the area where the fire is located
@@ -276,6 +319,8 @@ module.exports = {
   updateFireIncidentStatus,
   assignDronesToFires,
   detectAndDispatch,
+  getFireSpreadEstimate,
+  getFireBriefing,
   getAllFireEvents,
   createFireEvent,
   updateFireEvent,

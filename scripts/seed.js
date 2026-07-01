@@ -62,8 +62,8 @@ async function seed() {
 
   // --- Dati meteo (ERA5, temperature in Kelvin) ---
   await WeatherData.bulkCreate([
-    { areaId: etna.id, date: new Date(), mean_2m_air_temperature: 305.2, total_precipitation: 0, dewpoint_2m_temperature: 285.1, mean_sea_level_pressure: 101200, surface_pressure: 98000, u_component_of_wind_10m: 6.4 },
-    { areaId: gennargentu.id, date: new Date(), mean_2m_air_temperature: 299.0, total_precipitation: 0.002, dewpoint_2m_temperature: 288.0, mean_sea_level_pressure: 101500, surface_pressure: 99000, u_component_of_wind_10m: 3.1 },
+    { areaId: etna.id, date: new Date(), mean_2m_air_temperature: 305.2, total_precipitation: 0, dewpoint_2m_temperature: 285.1, mean_sea_level_pressure: 101200, surface_pressure: 98000, u_component_of_wind_10m: 6.4, v_component_of_wind_10m: 2.1 },
+    { areaId: gennargentu.id, date: new Date(), mean_2m_air_temperature: 299.0, total_precipitation: 0.002, dewpoint_2m_temperature: 288.0, mean_sea_level_pressure: 101500, surface_pressure: 99000, u_component_of_wind_10m: 3.1, v_component_of_wind_10m: -1.4 },
   ]);
 
   // --- Dati forest-change (Hansen-like) ---
