@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [drones, setDrones] = useState([]);
   const [fires, setFires] = useState([]);
   const [live, setLive] = useState(false);
+  const [spreadByFireId, setSpreadByFireId] = useState({});
 
   useEffect(() => {
     api('/api/areas/areas').then((d) => setAreas(arr(d))).catch(() => {});
@@ -72,6 +73,33 @@ export default function Dashboard() {
   }, []);
 
   const activeFires = fires.filter((f) => f.status !== 'extinguished');
+
+  // Stima propagazione (euristica vento, gratuita/locale — vedi disclaimer nel
+  // popup della mappa) per ogni incendio attivo, da mostrare come overlay.
+  useEffect(() => {
+    if (activeFires.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      activeFires.map((f) =>
+        api(`/api/fire-events/${f.id}/spread`)
+          .then((d) => [f.id, d])
+          .catch(() => [f.id, null]),
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setSpreadByFireId((prev) => {
+        const next = { ...prev };
+        pairs.forEach(([id, d]) => {
+          if (d) next[id] = d;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fires]);
 
   return (
     <div className="app">
@@ -124,7 +152,7 @@ export default function Dashboard() {
         </aside>
 
         <main className="main">
-          <MapView areas={areas} sensors={sensors} drones={drones} fires={fires} />
+          <MapView areas={areas} sensors={sensors} drones={drones} fires={fires} spreadByFireId={spreadByFireId} />
           <EEPanel />
         </main>
       </div>
