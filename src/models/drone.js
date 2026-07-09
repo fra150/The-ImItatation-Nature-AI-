@@ -25,6 +25,20 @@ const DroneData = sequelize.define(
       type: DataTypes.FLOAT,
       allowNull: false,
     },
+    // Campi opzionali (non ogni telemetria li porta tutti): storico utile per
+    // analisi batteria/connessione nel tempo, non solo la traccia GPS.
+    batteryLevel: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    signalStrength: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    linkQuality: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
     timestamp: {
       type: DataTypes.DATE,
       allowNull: false,

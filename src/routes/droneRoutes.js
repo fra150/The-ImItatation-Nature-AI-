@@ -26,6 +26,7 @@ router.post('/:droneId/release-agent', droneController.releaseExtinguishingAgent
 // --- Telemetria (droni -> Bot Padre) -------------------------------------
 router.put('/:id/status', droneController.updateDroneStatus);
 router.get('/:droneId/realtime', droneController.getRealtimeData);
+router.get('/:id/history', droneController.getDroneHistory); // storico drone_data
 
 // --- Immagini -------------------------------------------------------------
 router.post('/upload', upload.single('image'), droneController.uploadImage);

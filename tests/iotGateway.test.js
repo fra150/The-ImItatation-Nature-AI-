@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events');
 const { sequelize } = require('../src/config/database');
-const { Area, Sensor, Drone, FireEvent } = require('../src/models');
+const { Area, Sensor, Drone, DroneData, FireEvent } = require('../src/models');
 const iotGateway = require('../src/services/iotGateway');
 const realtime = require('../src/services/realtimeService');
 
@@ -94,6 +94,7 @@ describe('iotGateway — telemetria & rilevamento (DB in-memory)', () => {
     await Drone.destroy({ where: {} });
     await Sensor.destroy({ where: {} });
     await FireEvent.destroy({ where: {} });
+    await DroneData.destroy({ where: {} });
     iotGateway._reset();
   });
 
@@ -224,6 +225,47 @@ describe('iotGateway — telemetria & rilevamento (DB in-memory)', () => {
     expect(reloaded.signalStrength).toBe(-55);
     expect(reloaded.linkQuality).toBe(80);
     expect(reloaded.latencyMs).toBe(30);
+  });
+
+  test('telemetria completa (lat/lng/alt/speed) crea una riga di storico in DroneData', async () => {
+    await Drone.create({ identifier: 'DRN-HIST', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-HIST', {
+      latitude: 37.5,
+      longitude: 15.0,
+      altitude: 100,
+      speed: 12,
+      batteryLevel: 70,
+      signalStrength: -60,
+      linkQuality: 65,
+    });
+
+    const rows = await DroneData.findAll({ where: { droneId: 'DRN-HIST' } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].latitude).toBeCloseTo(37.5);
+    expect(rows[0].longitude).toBeCloseTo(15.0);
+    expect(rows[0].altitude).toBe(100);
+    expect(rows[0].speed).toBe(12);
+    expect(rows[0].batteryLevel).toBe(70);
+    expect(rows[0].signalStrength).toBe(-60);
+  });
+
+  test('telemetria parziale (solo batteria, senza posizione) NON crea storico', async () => {
+    await Drone.create({ identifier: 'DRN-PARTIAL', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-PARTIAL', { batteryLevel: 50 });
+
+    const rows = await DroneData.findAll({ where: { droneId: 'DRN-PARTIAL' } });
+    expect(rows).toHaveLength(0);
+  });
+
+  test('più letture della stessa telemetria completa si accumulano in ordine', async () => {
+    await Drone.create({ identifier: 'DRN-MULTI', model: 'Test X', status: 'available' });
+    await iotGateway.handleDroneTelemetry('DRN-MULTI', { latitude: 1, longitude: 1, altitude: 10, speed: 5 });
+    await iotGateway.handleDroneTelemetry('DRN-MULTI', { latitude: 2, longitude: 2, altitude: 20, speed: 8 });
+
+    const rows = await DroneData.findAll({ where: { droneId: 'DRN-MULTI' }, order: [['id', 'ASC']] });
+    expect(rows).toHaveLength(2);
+    expect(rows[0].altitude).toBe(10);
+    expect(rows[1].altitude).toBe(20);
   });
 
   test('segnale debole emette drone:weak-signal', async () => {

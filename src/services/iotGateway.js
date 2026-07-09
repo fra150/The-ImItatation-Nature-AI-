@@ -16,7 +16,7 @@
 const logger = require('../utils/logger');
 const realtime = require('./realtimeService');
 const fireWorkflow = require('./fireWorkflowService');
-const { Drone, Sensor } = require('../models');
+const { Drone, DroneData, Sensor } = require('../models');
 
 // Soglie di rilevamento incendio da telemetria sensore (override via env).
 const FIRE_TEMP_THRESHOLD = Number(process.env.FIRE_TEMP_THRESHOLD || 60); // °C
@@ -80,17 +80,39 @@ async function handleDroneTelemetry(ref, data = {}) {
   }
   const lat = num(data.latitude);
   const lng = num(data.longitude);
+  const alt = num(data.altitude);
+  const spd = num(data.speed);
+  const battery = num(data.batteryLevel);
+  const signal = num(data.signalStrength);
+  const link = num(data.linkQuality);
   if (lat !== undefined && lng !== undefined) drone.location = { latitude: lat, longitude: lng };
-  if (num(data.batteryLevel) !== undefined) drone.batteryLevel = data.batteryLevel;
-  if (num(data.altitude) !== undefined) drone.altitude = data.altitude;
-  if (num(data.speed) !== undefined) drone.speed = data.speed;
+  if (battery !== undefined) drone.batteryLevel = battery;
+  if (alt !== undefined) drone.altitude = alt;
+  if (spd !== undefined) drone.speed = spd;
   if (num(data.heading) !== undefined) drone.heading = data.heading;
-  if (num(data.signalStrength) !== undefined) drone.signalStrength = data.signalStrength;
-  if (num(data.linkQuality) !== undefined) drone.linkQuality = data.linkQuality;
+  if (signal !== undefined) drone.signalStrength = signal;
+  if (link !== undefined) drone.linkQuality = link;
   if (num(data.latencyMs) !== undefined) drone.latencyMs = data.latencyMs;
   drone.lastSeenAt = new Date();
   drone.online = true;
   await drone.save();
+
+  // Storico (drone_data): il modello richiede lat/lng/alt/speed non-null, così
+  // scriviamo una riga solo quando QUESTO messaggio li porta tutti — non
+  // quando arriva un ping parziale (es. solo batteria). Un vero drone/il SITL
+  // manda sempre il set completo a ogni tick, quindi in pratica è la norma.
+  if (lat !== undefined && lng !== undefined && alt !== undefined && spd !== undefined) {
+    await DroneData.create({
+      droneId: drone.identifier || String(drone.id),
+      latitude: lat,
+      longitude: lng,
+      altitude: alt,
+      speed: spd,
+      batteryLevel: battery,
+      signalStrength: signal,
+      linkQuality: link,
+    });
+  }
 
   if (typeof data.batteryLevel === 'number' && data.batteryLevel < 20) {
     logger.warn(`IoT: drone ${drone.identifier || drone.id} battery low (${data.batteryLevel}%)`);

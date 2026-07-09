@@ -1,4 +1,5 @@
 const Drone = require('../models/drone');
+const { DroneData } = require('../models');
 const { sequelize } = require('../config/database');
 const FireIncident = require('../models/fireEvents');
 const WeatherService = require('../services/weatherService');
@@ -172,6 +173,28 @@ const getRealtimeData = async (req, res, next) => {
   }
 };
 
+// Storico telemetria (drone_data): letture più recenti per il drone, per
+// analisi post-volo (traccia GPS, batteria/segnale nel tempo). Sola lettura,
+// gratuita: GET pubblico come le altre letture del progetto.
+const getDroneHistory = async (req, res, next) => {
+  const { id } = req.params;
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  try {
+    const drone = await Drone.findByPk(id);
+    if (!drone) {
+      return res.status(404).json({ error: 'Drone not found' });
+    }
+    const history = await DroneData.findAll({
+      where: { droneId: drone.identifier || String(drone.id) },
+      order: [['timestamp', 'DESC']],
+      limit,
+    });
+    res.json({ droneId: drone.id, identifier: drone.identifier, count: history.length, history });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Release water or extinguishing agents from the drone, such as fireball
 const releaseExtinguishingAgent = async (req, res, next) => {
   const { droneId } = req.params;
@@ -262,6 +285,7 @@ module.exports = {
   assignDronesToFires,
   updateDroneStatus,
   getRealtimeData,
+  getDroneHistory,
   releaseExtinguishingAgent,
   uploadImage,
   analyzeDroneData,

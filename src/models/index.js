@@ -2,6 +2,7 @@ const { sequelize } = require('../config/database');
 const Area = require('./area');
 const Sensor = require('./sensor');
 const Drone = require('./drone');
+const { DroneData } = require('./drone'); // storico telemetria (drone_data)
 const FireEvent = require('./fireEvents');
 const User = require('./user');
 const WeatherData = require('./weatherData');
@@ -37,6 +38,7 @@ module.exports = {
   FireEvent,
   Sensor,
   Drone,
+  DroneData,
   User,
   WeatherData,
 };
