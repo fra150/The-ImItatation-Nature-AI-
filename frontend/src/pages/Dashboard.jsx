@@ -35,12 +35,13 @@ export default function Dashboard() {
   const [fires, setFires] = useState([]);
   const [live, setLive] = useState(false);
   const [spreadByFireId, setSpreadByFireId] = useState({});
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    api('/api/areas/areas').then((d) => setAreas(arr(d))).catch(() => {});
-    api('/sensors').then((d) => setSensors(arr(d))).catch(() => {});
-    api('/drones').then((d) => setDrones(arr(d))).catch(() => {});
-    api('/api/fire-events').then((d) => setFires(arr(d))).catch(() => {});
+    api('/api/areas/areas').then((d) => setAreas(arr(d))).catch((e) => setLoadError(`Aree: ${e.message}`));
+    api('/sensors').then((d) => setSensors(arr(d))).catch((e) => setLoadError(`Sensori: ${e.message}`));
+    api('/drones').then((d) => setDrones(arr(d))).catch((e) => setLoadError(`Droni: ${e.message}`));
+    api('/api/fire-events').then((d) => setFires(arr(d))).catch((e) => setLoadError(`Incendi: ${e.message}`));
   }, []);
 
   // Real-time: ascolta gli eventi del backend e aggiorna lo stato in-place, così
@@ -103,6 +104,11 @@ export default function Dashboard() {
 
   return (
     <div className="app">
+      {loadError && (
+        <div className="error" role="alert" style={{ margin: 8 }}>
+          ⚠️ {loadError}
+        </div>
+      )}
       <header className="topbar">
         <div className="brand">
           🔥 The Imitatation Nature AI <span className="badge">SaaS</span>

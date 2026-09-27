@@ -1,7 +1,11 @@
 require('dotenv').config();
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET mancante: imposta JWT_SECRET in .env (vedi .env.example)');
+}
+
 module.exports = {
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 3001,
   jwtSecret: process.env.JWT_SECRET,
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
   geminiApiKey: process.env.GEMINI_API_KEY,

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const { body } = require('express-validator');
+const { validate } = require('../middleware/validator');
 const User = require('../models/user');
 
 // Nasconde l'hash della password prima di rispondere (create/update
@@ -36,9 +38,20 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new user
-router.post('/', async (req, res) => {
+const adminCreateValidations = [
+  body('username')
+    .notEmpty()
+    .withMessage('Username is required')
+    .isLength({ min: 3, max: 20 })
+    .withMessage('Username must be between 3 and 20 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores'),
+  body('password').notEmpty().withMessage('Password is required').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('role').optional().isIn(['admin', 'operator', 'viewer']).withMessage('Invalid role'),
+];
+router.post('/', validate(adminCreateValidations), async (req, res) => {
   try {
-    const { password, ...rest } = req.body;
+    const { password, id, ...rest } = req.body;
     // Password hashata come in authController.register — prima veniva
     // salvata (e restituita!) in chiaro creando l'utente da questa route.
     const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
@@ -50,11 +63,21 @@ router.post('/', async (req, res) => {
 });
 
 // Update a user by ID
-router.put('/:id', async (req, res) => {
+const adminUpdateValidations = [
+  body('username')
+    .optional()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('Username must be between 3 and 20 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores'),
+  body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('role').optional().isIn(['admin', 'operator', 'viewer']).withMessage('Invalid role'),
+];
+router.put('/:id', validate(adminUpdateValidations), async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (user) {
-      const { password, ...rest } = req.body;
+      const { password, id, ...rest } = req.body;
       const update = password ? { ...rest, password: await bcrypt.hash(password, 10) } : rest;
       await user.update(update);
       res.json(sanitize(user));

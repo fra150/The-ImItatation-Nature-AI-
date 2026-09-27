@@ -1,6 +1,8 @@
 const request = require('supertest');
+const bcrypt = require('bcrypt');
 const { sequelize } = require('../src/config/database');
 const { Area, Drone, FireEvent } = require('../src/models');
+const User = require('../src/models/user');
 const app = require('../src/app');
 
 // Sgancio agente estinguente su SQLite in-memory + flusso auth reale.
@@ -12,10 +14,8 @@ describe('POST /drones/:droneId/release-agent', () => {
 
   beforeAll(async () => {
     await sequelize.sync({ force: true });
-    const reg = await request(app)
-      .post('/auth/register')
-      .send({ username: 'pilota', password: 'Password123!', role: 'admin' });
-    expect(reg.status).toBe(201);
+    const hash = await bcrypt.hash('Password123!', 10);
+    await User.create({ username: 'pilota', password: hash, role: 'admin' });
     const login = await request(app)
       .post('/auth/login')
       .send({ username: 'pilota', password: 'Password123!' });

@@ -5,8 +5,8 @@ import { useAuth } from '../auth';
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [username, setUsername] = useState('francesco');
-  const [password, setPassword] = useState('Password123!');
+  const [username, setUsername] = useState(import.meta.env.DEV ? 'francesco' : '');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +39,7 @@ export default function Login() {
         />
         {error && <div className="error">⚠️ {error}</div>}
         <button disabled={loading}>{loading ? 'Accesso…' : 'Login'}</button>
-        <p className="hint">Demo seedata: francesco / Password123!</p>
+        {import.meta.env.DEV && <p className="hint">Demo seedata: francesco / Password123!</p>}
         <Link to="/register">Crea un account</Link>
       </form>
     </div>

@@ -32,13 +32,16 @@ async function issueRefreshToken(userId) {
  */
 const register = async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Registrazione pubblica: FORZA viewer. La promozione a admin/operator
+    // avviene solo via POST /api/users (admin-only). Impedisce privilege
+    // escalation via POST /auth/register {role:"admin"}.
     const user = await User.create({
       username,
       password: hashedPassword,
-      role: role || 'viewer',
+      role: 'viewer',
     });
 
     return res.status(201).json({ id: user.id, username: user.username, role: user.role });
@@ -70,7 +73,7 @@ const login = async (req, res) => {
     return res.json({ token, refreshToken, expiresIn: ACCESS_TOKEN_TTL });
   } catch (error) {
     logger.error(`Error logging in user: ${error.message}`);
-    return res.status(500).json({ error: 'Failed to login user' });
+    return res.status(500).json({ message: 'Failed to login user' });
   }
 };
 
@@ -105,7 +108,7 @@ const refresh = async (req, res) => {
     return res.json({ token: newToken, refreshToken: newRefreshToken, expiresIn: ACCESS_TOKEN_TTL });
   } catch (error) {
     logger.error(`Error refreshing token: ${error.message}`);
-    return res.status(500).json({ error: 'Failed to refresh token' });
+    return res.status(500).json({ message: 'Failed to refresh token' });
   }
 };
 

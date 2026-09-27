@@ -7,7 +7,7 @@ const limiter = rateLimit({
   message: 'Too many requests, please try again later.',
   handler: (req, res) => {
     logger.warn(`Rate limit exceeded from IP address: ${req.ip}`);
-    res.status(429).send('Too many requests. Please try again later.');
+    res.set('Retry-After', '60').status(429).json({ message: 'Too many requests. Please try again later.' });
   },
 });
 

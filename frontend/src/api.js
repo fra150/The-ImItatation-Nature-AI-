@@ -1,9 +1,9 @@
-// Client API verso il backend (default http://localhost:3000; override con
+// Client API verso il backend (default http://localhost:3001; override con
 // VITE_API_URL). Allega il JWT salvato in localStorage sulle richieste e, se
 // scaduto (401), tenta UN rinnovo silenzioso via /auth/refresh prima di
 // arrendersi — l'access token ora vive poco (vedi ACCESS_TOKEN_TTL sul
 // backend), il refresh token è quello a vita lunga.
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const token = () => localStorage.getItem('token');
 const refreshTokenValue = () => localStorage.getItem('refreshToken');
@@ -14,24 +14,38 @@ function clearSession() {
   localStorage.removeItem('user');
 }
 
+// Single-flight: N richieste in 401 parallelo condividono UN solo refresh,
+// le altre attendono (evita thundering refresh + logout a cascata).
+let refreshPromise = null;
+
 async function tryRefresh() {
-  const rt = refreshTokenValue();
-  if (!rt) return false;
-  try {
-    const res = await fetch(BASE + '/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: rt }),
-    });
-    if (!res.ok) throw new Error('refresh failed');
-    const data = await res.json();
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    return true;
-  } catch {
-    clearSession();
-    return false;
-  }
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const rt = refreshTokenValue();
+    if (!rt) return false;
+    try {
+      const res = await fetch(BASE + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: rt }),
+      });
+      // Rate-limit / errore rete transitorio: NON cancellare la sessione.
+      if (res.status === 429) return false;
+      if (!res.ok) throw new Error('refresh failed');
+      const data = await res.json();
+      if (!data?.token || !data?.refreshToken) throw new Error('refresh failed');
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      return true;
+    } catch (e) {
+      // Solo revoca/scadenza invalida la sessione; errori di rete la conservano.
+      if (e?.message === 'refresh failed') clearSession();
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
 }
 
 export async function api(path, { method = 'GET', body, auth = true, _retried = false } = {}) {
@@ -50,7 +64,11 @@ export async function api(path, { method = 'GET', body, auth = true, _retried = 
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.detail || data.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const first = Array.isArray(data.errors) && data.errors[0];
+    const msg = data.message || first?.msg || data.detail || data.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
   return data;
 }
 

@@ -19,6 +19,9 @@ export function AuthProvider({ children }) {
       auth: false,
       body: { username, password },
     });
+    if (!data?.token || !data?.refreshToken) {
+      throw new Error('Risposta di login non valida (token mancante)');
+    }
     localStorage.setItem('token', data.token);
     localStorage.setItem('refreshToken', data.refreshToken);
     const u = { username };

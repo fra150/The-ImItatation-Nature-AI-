@@ -1,5 +1,7 @@
 const request = require('supertest');
+const bcrypt = require('bcrypt');
 const { sequelize } = require('../src/config/database');
+const User = require('../src/models/user');
 const app = require('../src/app');
 
 // RBAC: admin/operator possono mutare, viewer no (le GET restano pubbliche
@@ -10,10 +12,17 @@ describe('RBAC — ruoli su mutazioni (SQLite in-memory)', () => {
   let viewerToken;
 
   const registerAndLogin = async (username, role) => {
-    const reg = await request(app)
-      .post('/auth/register')
-      .send({ username, password: 'Password123!', role });
-    expect(reg.status).toBe(201);
+    if (role === 'viewer') {
+      const reg = await request(app)
+        .post('/auth/register')
+        .send({ username, password: 'Password123!', role });
+      expect(reg.status).toBe(201);
+    } else {
+      // Registrazione pubblica forza viewer (anti privilege-escalation):
+      // admin/operator si creano direttamente a DB nei test.
+      const hash = await bcrypt.hash('Password123!', 10);
+      await User.create({ username, password: hash, role });
+    }
     const login = await request(app).post('/auth/login').send({ username, password: 'Password123!' });
     expect(login.status).toBe(200);
     return login.body.token;
@@ -89,8 +98,27 @@ describe('RBAC — ruoli su mutazioni (SQLite in-memory)', () => {
     const res = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ username: 'creato-da-admin', password: 'Password123!', role: 'viewer' });
+      .send({ username: 'creato_da_admin', password: 'Password123!', role: 'viewer' });
     expect([200, 201]).toContain(res.status);
     expect(res.body.password).toBeUndefined();
+  });
+
+  test('registrazione pubblica NON può creare admin (anti privilege-escalation) -> resta viewer', async () => {
+    const reg = await request(app)
+      .post('/auth/register')
+      .send({ username: 'finto-admin', password: 'Password123!', role: 'admin' });
+    // role=admin rifiutato dalla validazione pubblica (solo viewer ammesso)
+    expect([400, 201]).toContain(reg.status);
+    if (reg.status === 201) {
+      expect(reg.body.role).toBe('viewer');
+      const login = await request(app).post('/auth/login').send({ username: 'finto-admin', password: 'Password123!' });
+      expect(login.status).toBe(200);
+      const me = await request(app)
+        .post('/sensors')
+        .set('Authorization', `Bearer ${login.body.token}`)
+        .send(sensorPayload('RBAC-FAKE-ADMIN'));
+      // se fosse davvero admin passerebbe, da viewer deve essere 403
+      expect(me.status).toBe(403);
+    }
   });
 });

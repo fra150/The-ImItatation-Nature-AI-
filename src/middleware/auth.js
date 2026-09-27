@@ -18,7 +18,7 @@ module.exports = (req, res, next) => {
       return res.status(401).json({ message: 'Token authentication error' });
     }
     if (!decoded.role) {
-      return res.status(401).json({ message: 'Invalid user role' });
+      return res.status(401).json({ message: 'Sessione precedente alla Fase F: effettuare nuovamente il login' });
     }
     req.userId = decoded.id;
     req.userRole = decoded.role;

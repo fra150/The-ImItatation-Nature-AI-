@@ -8,15 +8,21 @@ const { Area, Sensor, Drone, FireEvent, User, WeatherData } = require('../src/mo
 const ForestData = require('../src/models/forestModel');
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_SEED) {
+    console.error('⛔ seed bloccato in production (imposta ALLOW_SEED=1 per forzarlo)');
+    process.exit(1);
+  }
   console.log(`Seeding database (dialect=${process.env.DB_DIALECT || 'sqlite'})...`);
   await sequelize.sync({ force: true });
 
   // --- Utenti (password: Password123!) ---
-  const hash = await bcrypt.hash('Password123!', 10);
+  const hash1 = await bcrypt.hash('Password123!', 10);
+  const hash2 = await bcrypt.hash('Password123!', 10);
+  const hash3 = await bcrypt.hash('Password123!', 10);
   await User.bulkCreate([
-    { username: 'francesco', password: hash, role: 'admin' },
-    { username: 'operatore1', password: hash, role: 'operator' },
-    { username: 'osservatore1', password: hash, role: 'viewer' },
+    { username: 'francesco', password: hash1, role: 'admin' },
+    { username: 'operatore1', password: hash2, role: 'operator' },
+    { username: 'osservatore1', password: hash3, role: 'viewer' },
   ]);
 
   // --- Aree ---

@@ -1,6 +1,8 @@
 const request = require('supertest');
+const bcrypt = require('bcrypt');
 const { sequelize } = require('../src/config/database');
 require('../src/models'); // registra modelli + associazioni
+const User = require('../src/models/user');
 const app = require('../src/app');
 
 // Integrazione DB REALE (SQLite in-memory sotto NODE_ENV=test) + flusso AUTH:
@@ -18,13 +20,17 @@ describe('DB + auth integration (SQLite in-memory)', () => {
   test('register persists a user; login returns a JWT', async () => {
     const reg = await request(app)
       .post('/auth/register')
-      .send({ username: 'tester', password: 'Password123!', role: 'admin' });
+      .send({ username: 'tester', password: 'Password123!' });
     expect(reg.status).toBe(201);
-    expect(reg.body).toMatchObject({ username: 'tester', role: 'admin' });
+    expect(reg.body).toMatchObject({ username: 'tester', role: 'viewer' });
 
+    // Admin per i test successivi: la registrazione pubblica forza viewer
+    // (anti privilege-escalation), gli admin si creano direttamente a DB.
+    const hash = await bcrypt.hash('Password123!', 10);
+    await User.create({ username: 'tester_admin', password: hash, role: 'admin' });
     const login = await request(app)
       .post('/auth/login')
-      .send({ username: 'tester', password: 'Password123!' });
+      .send({ username: 'tester_admin', password: 'Password123!' });
     expect(login.status).toBe(200);
     token = login.body.token;
     expect(typeof token).toBe('string');
@@ -36,7 +42,7 @@ describe('DB + auth integration (SQLite in-memory)', () => {
 
     const list = await request(app).get('/api/users').set('Authorization', `Bearer ${token}`);
     expect(list.status).toBe(200);
-    expect(list.body.some((u) => u.username === 'tester')).toBe(true);
+    expect(list.body.some((u) => u.username === 'tester_admin')).toBe(true);
     expect(list.body[0].password).toBeUndefined();
   });
 

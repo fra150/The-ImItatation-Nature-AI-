@@ -6,7 +6,8 @@ import Dashboard from './pages/Dashboard';
 
 function Protected({ children }) {
   const { token } = useAuth();
-  return token ? children : <Navigate to="/login" replace />;
+  const valid = typeof token === 'string' && token !== 'undefined' && token.split('.').length === 3;
+  return valid ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {

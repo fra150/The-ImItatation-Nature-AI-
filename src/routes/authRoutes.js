@@ -17,7 +17,7 @@ const registerValidations = [
     .withMessage('Password is required')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters'),
-  body('role').optional().isIn(['admin', 'operator', 'viewer']).withMessage('Invalid role'),
+  body('role').optional().isIn(['viewer']).withMessage('Invalid role'),
 ];
 
 const loginValidations = [
