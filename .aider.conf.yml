@@ -2,7 +2,7 @@
 # Config Aider per lavoro assistito sul repo (backend Node + frontend Vite).
 # Docs: https://aider.chat/docs/config.html
 
-model: gpt-4o-mini
+model: claude-opus5.5
 edit-format: whole
 auto-commits: false
 dirty-commits: false
