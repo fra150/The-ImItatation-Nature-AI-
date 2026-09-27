@@ -24,7 +24,9 @@ export function AuthProvider({ children }) {
     }
     localStorage.setItem('token', data.token);
     localStorage.setItem('refreshToken', data.refreshToken);
-    const u = { username };
+    const u = data?.user && data.user.username
+      ? { id: data.user.id, username: data.user.username, role: data.user.role }
+      : { username };
     localStorage.setItem('user', JSON.stringify(u));
     setToken(data.token);
     setUser(u);

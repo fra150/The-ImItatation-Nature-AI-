@@ -70,7 +70,12 @@ const login = async (req, res) => {
     const token = signAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
 
-    return res.json({ token, refreshToken, expiresIn: ACCESS_TOKEN_TTL });
+    return res.json({
+      token,
+      refreshToken,
+      expiresIn: ACCESS_TOKEN_TTL,
+      user: { id: user.id, username: user.username, role: user.role },
+    });
   } catch (error) {
     logger.error(`Error logging in user: ${error.message}`);
     return res.status(500).json({ message: 'Failed to login user' });
@@ -105,7 +110,12 @@ const refresh = async (req, res) => {
 
     const newToken = signAccessToken(user);
     const newRefreshToken = await issueRefreshToken(user.id);
-    return res.json({ token: newToken, refreshToken: newRefreshToken, expiresIn: ACCESS_TOKEN_TTL });
+    return res.json({
+      token: newToken,
+      refreshToken: newRefreshToken,
+      expiresIn: ACCESS_TOKEN_TTL,
+      user: { id: user.id, username: user.username, role: user.role },
+    });
   } catch (error) {
     logger.error(`Error refreshing token: ${error.message}`);
     return res.status(500).json({ message: 'Failed to refresh token' });

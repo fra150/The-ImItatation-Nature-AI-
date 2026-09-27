@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { socket } from '../socket';
 import MapView from '../components/MapView';
 import EEPanel from '../components/EEPanel';
+import DroneCommander from '../components/DroneCommander';
 
 // I GET sono pubblici; estrae l'array qualunque sia la forma della risposta.
 const arr = (d) => (Array.isArray(d) ? d : d?.sensors || d?.areas || d?.drones || d?.data || []);
@@ -159,6 +160,14 @@ export default function Dashboard() {
 
         <main className="main">
           <MapView areas={areas} sensors={sensors} drones={drones} fires={fires} spreadByFireId={spreadByFireId} />
+          <DroneCommander
+            drones={drones}
+            onChanged={() =>
+              api('/drones')
+                .then((d) => setDrones(arr(d)))
+                .catch(() => {})
+            }
+          />
           <EEPanel />
         </main>
       </div>
