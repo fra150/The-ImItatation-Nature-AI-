@@ -5,6 +5,7 @@ const Drone = require('./drone');
 const { DroneData } = require('./drone'); // storico telemetria (drone_data)
 const FireEvent = require('./fireEvents');
 const User = require('./user');
+const RefreshToken = require('./refreshToken');
 const WeatherData = require('./weatherData');
 
 // Associazioni pulite e coerenti (ogni relazione definita UNA volta, con un
@@ -33,6 +34,10 @@ Drone.belongsTo(FireEvent, { foreignKey: 'fireEventId' });
 Sensor.hasMany(FireEvent, { foreignKey: 'detectedBySensorId' });
 FireEvent.belongsTo(Sensor, { foreignKey: 'detectedBySensorId' });
 
+// User 1—N RefreshToken (sessioni di refresh revocabili)
+User.hasMany(RefreshToken, { foreignKey: 'userId' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId' });
+
 module.exports = {
   Area,
   FireEvent,
@@ -40,5 +45,6 @@ module.exports = {
   Drone,
   DroneData,
   User,
+  RefreshToken,
   WeatherData,
 };

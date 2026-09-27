@@ -1,8 +1,30 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { Op } = require('sequelize');
 const User = require('../models/user');
+const RefreshToken = require('../models/refreshToken');
 const environment = require('../config/environment');
 const logger = require('../utils/logger');
+
+// Access token: breve (stateless, non revocabile finché non scade). Refresh
+// token: lungo ma REVOCABILE (riga a DB) — è lui il vero meccanismo di sessione;
+// vedi models/refreshToken.js per il perché si salva solo l'hash.
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
+const REFRESH_TOKEN_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 7);
+
+const hashToken = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
+
+function signAccessToken(user) {
+  return jwt.sign({ id: user.id, role: user.role }, environment.jwtSecret, { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+async function issueRefreshToken(userId) {
+  const raw = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+  await RefreshToken.create({ tokenHash: hashToken(raw), userId, expiresAt });
+  return raw;
+}
 
 /**
  * Registra un nuovo utente. La validazione dell'input è applicata come
@@ -16,7 +38,7 @@ const register = async (req, res) => {
     const user = await User.create({
       username,
       password: hashedPassword,
-      role: role || 'user',
+      role: role || 'viewer',
     });
 
     return res.status(201).json({ id: user.id, username: user.username, role: user.role });
@@ -30,7 +52,8 @@ const register = async (req, res) => {
 };
 
 /**
- * Autentica un utente e restituisce un JWT con scadenza 8h.
+ * Autentica un utente: JWT di accesso a vita breve + refresh token
+ * (revocabile) per rinnovarlo senza richiedere di nuovo la password.
  */
 const login = async (req, res) => {
   try {
@@ -41,11 +64,10 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, environment.jwtSecret, {
-      expiresIn: '8h',
-    });
+    const token = signAccessToken(user);
+    const refreshToken = await issueRefreshToken(user.id);
 
-    return res.json({ token });
+    return res.json({ token, refreshToken, expiresIn: ACCESS_TOKEN_TTL });
   } catch (error) {
     logger.error(`Error logging in user: ${error.message}`);
     return res.status(500).json({ error: 'Failed to login user' });
@@ -53,16 +75,66 @@ const login = async (req, res) => {
 };
 
 /**
- * Logout. Con JWT stateless il server non mantiene sessioni: il client deve
- * scartare il token. Per un'invalidazione reale servirebbe una blocklist dei
- * token (es. Redis) — vedi TODO nel README.
+ * Scambia un refresh token valido (non scaduto, non revocato) con una nuova
+ * coppia access+refresh. Il refresh token usato viene REVOCATO (rotazione):
+ * ogni refresh token è utilizzabile una sola volta, limita il danno di un
+ * eventuale furto del token.
  */
-const logout = (_req, res) => {
-  return res.status(200).json({ message: 'Logout successful. Please discard your token client-side.' });
+const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'refreshToken is required' });
+    }
+
+    const record = await RefreshToken.findOne({ where: { tokenHash: hashToken(refreshToken) } });
+    if (!record || record.revokedAt || record.expiresAt < new Date()) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    const user = await User.findByPk(record.userId);
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    record.revokedAt = new Date();
+    await record.save();
+
+    const newToken = signAccessToken(user);
+    const newRefreshToken = await issueRefreshToken(user.id);
+    return res.json({ token: newToken, refreshToken: newRefreshToken, expiresIn: ACCESS_TOKEN_TTL });
+  } catch (error) {
+    logger.error(`Error refreshing token: ${error.message}`);
+    return res.status(500).json({ error: 'Failed to refresh token' });
+  }
+};
+
+/**
+ * Logout REALE: revoca il refresh token indicato, impedendo di ottenere
+ * nuovi access token con quella sessione. L'access token corrente resta
+ * valido fino alla sua breve scadenza naturale (finestra accettata — vedi
+ * ACCESS_TOKEN_TTL). Non richiede un access token valido: basta possedere il
+ * refresh token, utile anche se l'access token è già scaduto.
+ */
+const logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.body || {};
+    if (refreshToken) {
+      await RefreshToken.update(
+        { revokedAt: new Date() },
+        { where: { tokenHash: hashToken(refreshToken), revokedAt: { [Op.is]: null } } },
+      );
+    }
+    return res.status(200).json({ message: 'Logout successful.' });
+  } catch (error) {
+    logger.error(`Error logging out: ${error.message}`);
+    return res.status(200).json({ message: 'Logout successful.' });
+  }
 };
 
 module.exports = {
   register,
   login,
+  refresh,
   logout,
 };

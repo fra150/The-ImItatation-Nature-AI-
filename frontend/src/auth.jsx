@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
       body: { username, password },
     });
     localStorage.setItem('token', data.token);
+    localStorage.setItem('refreshToken', data.refreshToken);
     const u = { username };
     localStorage.setItem('user', JSON.stringify(u));
     setToken(data.token);
@@ -31,8 +32,17 @@ export function AuthProvider({ children }) {
     return login(username, password);
   }
 
-  function logout() {
+  async function logout() {
+    // Revoca reale lato server (best-effort: il logout locale avviene comunque
+    // anche se la richiesta fallisce, es. rete assente).
+    const refreshToken = localStorage.getItem('refreshToken');
+    try {
+      await api('/auth/logout', { method: 'POST', auth: false, body: { refreshToken } });
+    } catch {
+      // ignorato: la sessione locale va comunque chiusa
+    }
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);

@@ -57,14 +57,21 @@ app.get('/', (_req, res) => {
 });
 
 // ============================================================
-// Routes API — autenticazione JWT (API "SaaS-ready")
-// /auth è pubblico (register/login/logout). Sulle altre route le operazioni di
-// SCRITTURA (POST/PUT/PATCH/DELETE) richiedono un JWT valido; le letture (GET)
-// restano pubbliche. /api/users è protetto su TUTTI i metodi (lista sensibile).
+// Routes API — autenticazione JWT + RBAC (API "SaaS-ready")
+// /auth è pubblico (register/login/refresh/logout). Sulle altre route le
+// operazioni di SCRITTURA (POST/PUT/PATCH/DELETE) richiedono un JWT valido E
+// un ruolo 'admin' o 'operator' — un 'viewer' autenticato può leggere (le GET
+// restano pubbliche) ma nessuna mutazione. /api/users è protetto su TUTTI i
+// metodi (lista sensibile) e le sue mutazioni richiedono 'admin' (gestione
+// account, più sensibile delle mutazioni operative).
 // ============================================================
 const auth = require('./middleware/auth');
+const requireRole = require('./middleware/rbac');
+const isMutation = (req) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
 const protectMutations = (req, res, next) =>
-  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ? auth(req, res, next) : next();
+  isMutation(req) ? auth(req, res, () => requireRole('admin', 'operator')(req, res, next)) : next();
+const requireAdminMutations = (req, res, next) =>
+  isMutation(req) ? requireRole('admin')(req, res, next) : next(); // req.userRole già impostato da `auth` a monte
 
 app.use('/auth', authRoutes);
 app.use('/sensors', protectMutations, sensorRoutes);
@@ -72,7 +79,7 @@ app.use('/drones', protectMutations, droneRoutes);
 app.use('/gemini', protectMutations, geminiRoutes);
 app.use('/api/fire-events', protectMutations, fireEventRoutes);
 app.use('/api/weather', protectMutations, weatherDataRoutes);
-app.use('/api/users', auth, userRoutes); // lista utenti sensibile -> auth su tutto
+app.use('/api/users', auth, requireAdminMutations, userRoutes); // lista utenti sensibile -> auth su tutto, mutazioni -> admin
 app.use('/api/areas', protectMutations, areaRoutes);
 app.use('/api/classify', protectMutations, require('./routes/classificationRoutes'));
 // forestRoutes è montato sul prefisso condiviso '/api': va registrato DOPO le

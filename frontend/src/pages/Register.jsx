@@ -15,7 +15,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      await register(username, password, 'user');
+      await register(username, password, 'viewer');
       nav('/');
     } catch (err) {
       setError(err.message);

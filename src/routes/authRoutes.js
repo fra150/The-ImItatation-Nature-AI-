@@ -17,7 +17,7 @@ const registerValidations = [
     .withMessage('Password is required')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters'),
-  body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role'),
+  body('role').optional().isIn(['admin', 'operator', 'viewer']).withMessage('Invalid role'),
 ];
 
 const loginValidations = [
@@ -25,8 +25,11 @@ const loginValidations = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+const refreshValidations = [body('refreshToken').notEmpty().withMessage('refreshToken is required')];
+
 router.post('/register', validate(registerValidations), authController.register);
 router.post('/login', validate(loginValidations), authController.login);
+router.post('/refresh', validate(refreshValidations), authController.refresh);
 router.post('/logout', authController.logout);
 
 module.exports = router;

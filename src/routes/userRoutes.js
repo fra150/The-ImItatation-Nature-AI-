@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt');
 const User = require('../models/user');
+
+// Nasconde l'hash della password prima di rispondere (create/update
+// restituivano l'intera riga, incluso il campo password).
+const sanitize = (user) => {
+  const plain = user.toJSON ? user.toJSON() : user;
+  const { password, ...rest } = plain;
+  return rest;
+};
 
 // Get all users
 router.get('/', async (req, res) => {
@@ -29,8 +38,12 @@ router.get('/:id', async (req, res) => {
 // Create a new user
 router.post('/', async (req, res) => {
   try {
-    const user = await User.create(req.body);
-    res.status(201).json(user);
+    const { password, ...rest } = req.body;
+    // Password hashata come in authController.register — prima veniva
+    // salvata (e restituita!) in chiaro creando l'utente da questa route.
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+    const user = await User.create({ ...rest, password: hashedPassword });
+    res.status(201).json(sanitize(user));
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -41,8 +54,10 @@ router.put('/:id', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (user) {
-      await user.update(req.body);
-      res.json(user);
+      const { password, ...rest } = req.body;
+      const update = password ? { ...rest, password: await bcrypt.hash(password, 10) } : rest;
+      await user.update(update);
+      res.json(sanitize(user));
     } else {
       res.status(404).json({ message: 'User not found' });
     }

@@ -15,7 +15,8 @@ async function seed() {
   const hash = await bcrypt.hash('Password123!', 10);
   await User.bulkCreate([
     { username: 'francesco', password: hash, role: 'admin' },
-    { username: 'operatore1', password: hash, role: 'user' },
+    { username: 'operatore1', password: hash, role: 'operator' },
+    { username: 'osservatore1', password: hash, role: 'viewer' },
   ]);
 
   // --- Aree ---

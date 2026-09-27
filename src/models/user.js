@@ -27,10 +27,14 @@ const User = sequelize.define(
         notNull: true,
       },
     },
+    // RBAC: admin (tutto, incl. gestione utenti) / operator (mutazioni
+    // operative: droni, incendi, sensori) / viewer (sola lettura — le GET
+    // sono già pubbliche, un viewer autenticato semplicemente non può
+    // effettuare NESSUNA mutazione). Vedi middleware/rbac.js.
     role: {
-      type: DataTypes.ENUM('user', 'admin'),
+      type: DataTypes.ENUM('admin', 'operator', 'viewer'),
       allowNull: false,
-      defaultValue: 'user', // Default role: 'user'
+      defaultValue: 'viewer',
     },
   },
   {
@@ -49,7 +53,7 @@ module.exports = User;
    - The 'id' column is an auto-incrementing integer that serves as the primary key. It is mandatory and cannot be null.
    - The 'username' column is a string with a maximum length of 255 characters. It is mandatory, unique, and cannot be null or an empty string.
    - The 'password' column is a string with a maximum length of 255 characters. It is mandatory and cannot be null or an empty string.
-   - The 'role' column is an enumerator that can be 'user' or 'admin'. It is mandatory and has a default value of 'user'.
+   - The 'role' column is an enumerator: 'admin', 'operator', or 'viewer'. It is mandatory and defaults to 'viewer'.
 4. I configured some additional options for the model, such as the model name ('User') and the table name in the database ('users').
 5. Finally, I exported the 'User' model so it can be used in other parts of the application.
 In summary, I created a data model for the user with Sequelize, defined the necessary columns for the 'users' table in the database, configured some additional options, and exported the model for use in other parts of the application. */
