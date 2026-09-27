@@ -1,0 +1,44 @@
+# .aiderignore — mai dare ad Aider/LLM questi path
+# Sintassi gitignore. Scopo: niente secrets, niente DB, niente build.
+
+# Secrets & env
+.env
+.env.*
+!.env.example
+frontend/.env.local
+secrets/
+*-key.json
+**/*key.json
+
+# DB & dati locali
+*.sqlite
+*.sqlite-*
+database.sqlite
+*.db
+
+# Log & tmp
+logs/
+*.log
+combined*.log
+error*.log
+C:\Users\acese\AppData\Local\Temp\opencode/
+
+# Dipendenze & build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+coverage/
+
+# Tooling locale (mai committare, mai inviare)
+.claude/
+.gstack/
+.opencode/
+.vscode/
+.idea/
+filemd/cosa fare.md
+
+# OS
+.DS_Store
+Thumbs.db

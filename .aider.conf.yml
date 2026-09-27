@@ -1,0 +1,25 @@
+# .aider.conf.yml — The ImItatation Nature AI
+# Config Aider per lavoro assistito sul repo (backend Node + frontend Vite).
+# Docs: https://aider.chat/docs/config.html
+
+model: gpt-4o-mini
+edit-format: whole
+auto-commits: false
+dirty-commits: false
+watch-files: true
+pretty: true
+stream: true
+encoding: utf-8
+
+# Mappa repo sempre attiva (generata on-the-fly, non committare output)
+repo-map: true
+
+# File in sola lettura di contesto (mai modificare via aider senza ok)
+read-only:
+  - README.md
+  - filemd/diario.md
+  - filemd/cosa fare.md
+  - .env.example
+
+# Lingua risposte
+language: it
